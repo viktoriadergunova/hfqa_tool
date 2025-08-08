@@ -273,7 +273,7 @@ def ProbeT_score(df):
                         p1 = -0.2 
                     elif 10 < df.loc[id,'C23'] <= 30:
                         p2 = -0.1
-                    elif (0 < df.loc[id,'C23'] <= 10) or ("[tilt corrected]" in df.loc[id,'C11']):
+                    elif (0 < df.loc[id,'C23'] <= 10) or ("[tilt corrected]" in df.loc[id,'C12']):
                         p3 = 0
                     else:
                         error_string = error_string + f" {c},"
