@@ -1,0 +1,179 @@
+version: "1.0"
+schema_id: "heatflow:v1"
+name: "heat_flow_db_complete"
+
+core:
+  ID:
+    dtype: int64
+    unique: true
+    min: 1
+  Obligation:
+    dtype: string
+    allowed: ["M", "R", "O", "-"]
+  Level:
+    dtype: string
+    allowed: ["Parent", "Child" # "Admin"]
+
+columns:
+  # ===== PARENT LEVEL (Pxx) =====
+  P01:
+    dtype: float64
+    range: [-999999.9, 999999.9]
+    obligation: "M"
+    comment: "HF Value"
+
+  P02:
+    dtype: float64
+    range: [0.0, 999999.9]
+    obligation: "M"
+    comment: "HF Uncertainty"
+
+  P03:
+    dtype: string
+    obligation: "M"
+    comment: "Name"
+    # normalization: { trim: true, collapse_space: true }
+    # string_constraints: { max_length: 200 }
+
+  P04:
+    dtype: float64
+    range: [-90.0, 90.0]
+    obligation: "M"
+    comment: "Latitude"
+
+  P05:
+    dtype: float64
+    range: [-180.0, 180.0]
+    obligation: "M"
+    comment: "Longitude"
+
+  P06:
+    dtype: float64
+    range: [-12000.0, 9000.0]
+    obligation: "M"
+    comment: "Elevation"
+
+  P07:
+    dtype: list[string]
+    allowed:
+      - "[Onshore (continental)]"
+      - "[Onshore (lake-river-etc.)]"
+      - "[Offshore (continental)]"
+      - "[Offshore (marine)]"
+      - "[Other (specify in comments)]"
+      - "[unspecified]"
+    obligation: "M"
+    multi_choice: true
+    separator: ";"
+    comment: "Location Type (multi-select)"
+
+  P08:
+    dtype: string
+    obligation: "M"
+    comment: "Comments (Parent level)"
+
+  P09:
+    dtype: string
+    allowed: ["Yes", "No", "[unspecified]"]
+    obligation: "R"
+    comment: "Correction HP"
+
+  P10:
+    dtype: float64
+    range: [-12000.0, 9000.0]
+    obligation: "R"
+    comment: "Total MD"
+
+  P11:
+    dtype: float64
+    range: [-12000.0, 9000.0]
+    obligation: "R"
+    comment: "TVD"
+
+  P12:
+    dtype: list[string]
+    allowed:
+      - "[Drilling]"
+      - "[Mining]"
+      - "[Tunneling]"
+      - "[Probing (onshore-lake-river-etc.)]"
+      - "[Probing (offshore-ocean)]"
+      - "[Drilling-Clustering]"
+      - "[Probing-Clustering]"
+      - "[Indirect (GTM-BSR-CPD-etc.)]"
+      - "[Other (specify in comments)]"
+      - "[unspecified]"
+    obligation: "M"
+    multi_choice: true
+    separator: ";"
+    comment: "Type of Exploration Method (multi-select)"
+
+  P13:
+    dtype: list[string]
+    allowed:
+      - "[Hydrocarbon]"
+      - "[Underground storage]"
+      - "[Geothermal]"
+      - "[Groundwater]"
+      - "[Mapping]"
+      - "[Research]"
+      - "[Mining]"
+      - "[Tunneling]"
+      - "[Other (specify in comments)]"
+      - "[unspecified]"
+    obligation: "R"
+    multi_choice: true
+    separator: ";"
+    comment: "Exploration Purpose (multi-select)"
+  # ===== CHILD LEVEL (Cxx) =====
+  C01: { dtype: float64, range: [-999999.9, 999999.9], obligation: "M" }
+  C02: { dtype: float64, range: [0.0, 999999.9],       obligation: "M" }
+  C03: { dtype: string,  allowed: ["[Numerical inversion]","[unspecified]"], obligation: "M" }
+  C04: { dtype: float64, range: [0.0, 19999.9],        obligation: "M" }
+  C05: { dtype: float64, range: [0.0, 19999.9],        obligation: "M" }
+  C06: { dtype: float64, range: [0.0, 999.9],          obligation: "M" }
+  C07: { dtype: string,  obligation: "M" }
+  C13: { dtype: string,  allowed: ["[unspecified]"],   obligation: "M" }
+  C14: { dtype: string,  allowed: ["[unspecified]"],   obligation: "M" }
+  C15: { dtype: string,  allowed: ["[unspecified]"],   obligation: "M" }
+  C16: { dtype: string,  allowed: ["[unspecified]"],   obligation: "M" }
+  C17: { dtype: string,  allowed: ["[unspecified]"],   obligation: "M" }
+  C21: { dtype: string,  obligation: "R" }
+  C22: { dtype: string,  allowed: ["[R/V Ship]","[Single Steel probe (Bullard)]"], obligation: "R" }
+  C23: { dtype: float64, range: [0.0, 99.99],          obligation: "M" }
+  C24: { dtype: float64, range: [0.0, 99.9],           obligation: "R" }
+  C25: { dtype: float64, range: [-9.99, 999.99],       obligation: "O" }
+  C26: { dtype: string,  obligation: "O" }
+  C27: { dtype: string,  obligation: "O" }
+  C28: { dtype: float64, range: [-99999.99, 99999.99], obligation: "O" }
+  C29: { dtype: float64, range: [-99999.99, 99999.99], obligation: "R" }
+  C30: { dtype: float64, range: [-99999.99, 99999.99], obligation: "O" }
+  C31: { dtype: float64, range: [-99999.99, 99999.99], obligation: "O" }
+  C32: { dtype: string,  obligation: "M" }
+  C33: { dtype: float64, range: [0.0, 99999.0],        obligation: "R" }
+  C34: { dtype: float64, range: [0.0, 99999.0],        obligation: "R" }
+  C35: { dtype: string,  obligation: "R" }
+  C36: { dtype: string,  obligation: "R" }
+  C37: { dtype: int64,   range: [0, 9999],             obligation: "M" }
+  C38: { dtype: timestamp[ns],                          obligation: "R" }
+  C39: { dtype: float64, range: [0.0, 99.99],           obligation: "M" }
+  C40: { dtype: float64, range: [0.0, 99.99],           obligation: "R" }
+  C41: { dtype: string,  obligation: "M" }
+  C42: { dtype: string,  obligation: "M" }
+  C43: { dtype: string,  obligation: "M" }
+  C44: { dtype: string,  obligation: "M" }
+  C45: { dtype: string,  obligation: "R" }
+  C46: { dtype: string,  obligation: "R" }
+  C47: { dtype: int64,   range: [0, 999999],            obligation: "O" }
+  C48: { dtype: string,  obligation: "R" }
+  C49: { dtype: string,  obligation: "O" }
+
+  # ===== ADMIN LEVEL (Axx) =====
+  # A01: { dtype: string,        obligation: "M" }
+  # A02: { dtype: string,        obligation: "O" }
+  # A03: { dtype: timestamp[ns], obligation: "O" }
+  # A04: { dtype: string,        obligation: "O" }
+  # A05: { dtype: string,        obligation: "O" }
+  # A06: { dtype: string,        allowed: ["continental","marine"], obligation: "O" }
+  # A07: { dtype: string,        obligation: "O" }
+  # A08: { dtype: string,        obligation: "O" }
