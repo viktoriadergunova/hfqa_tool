@@ -63,8 +63,6 @@ columns:
       - "[Other (specify in comments)]"
       - "[unspecified]"
     obligation: "M"
-    multi_choice: true
-    separator: ";"
     comment: "Location Type (multi-select)"
 
   P08:
@@ -104,8 +102,6 @@ columns:
       - "[Other (specify in comments)]"
       - "[unspecified]"
     obligation: "M"
-    multi_choice: true
-    separator: ";"
     comment: "Type of Exploration Method (multi-select)"
 
   P13:
@@ -175,13 +171,15 @@ C06:
 C07:
   dtype: string
   obligation: "M"
-  comment: "Primary publication reference (multi-entry)"
+  comment: "Primary publication reference"
 
 C08:
-  dtype: string
+  dtype: list[string]
   obligation: "R"
+  multi_choice: true
+  separator: ";"
   comment: "Primary reference (multi-entry)"
-
+  
 C09:
   dtype: string
   allowed:
@@ -191,9 +189,11 @@ C09:
   comment: "Relevant Child"
 
 C10:
-  dtype: string
+  dtype: list[string]
   obligation: "R"
-  comment: "Comments (Child level)"
+  multi_choice: true
+  separator: ";"
+  comment: "Comments (Child level; multi-entry)"
 
 C11:
   dtype: string
@@ -230,8 +230,6 @@ C13:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "R"
-  multi_choice: true
-  seperator: ";"
   comment: "Flag: sedimentation corrections"
 
 C14:
@@ -243,8 +241,6 @@ C14:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "R"
-  multi_choice: true
-  seperator: ";"
   comment: "Flag: erosion corrections"
 
 C15:
@@ -256,8 +252,6 @@ C15:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "M"
-  multi_choice: true
-  seperator: ";"
   comment: "Flag: topographic corrections"
 
 C16:
@@ -269,8 +263,6 @@ C16:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "M"
-  multi_choice: true
-  seperator: ";"
   comment: "Flag: paleoclimatic corrections"
 
 C17:
@@ -282,8 +274,6 @@ C17:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "M"
-  multi_choice: true
-  seperator: ";"  
   comment: "Flag: transient corrections"
 
   C18:
@@ -295,8 +285,6 @@ C17:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "M"
-  multi_choice: true
-  separator: ";"
   comment: "Flag: convection processes corrections"
 
   C19:
@@ -308,9 +296,8 @@ C17:
     - "[Not recognized]"
     - "[unspecified]"
   obligation: "M"
-  multi_choice: true
-  separator: ";"
   comment: "Flag: heat refraction effets corrections"
+
 C20:
   dtype: list[string]
   allowed:
@@ -919,7 +906,7 @@ C32:
   multi_choice: true
   separator: ";"
   comment: "Temperature method (bottom, multi-select)"
-  obligation: "M" }
+}
 
 
 
@@ -928,7 +915,7 @@ C32:
   C34: { dtype: float64, range: [0.0, 99.99],        obligation: "R" } # Shut-in time (bottom)
   
   C35:
-  dtype: string
+  dtype: list[string]
   allowed:
     - "[Horner plot]"
     - "[Cylinder source method]"
@@ -939,10 +926,12 @@ C32:
     - "[unspecified]"
     - "[not corrected]"
   obligation: "R"
+  multi_choice: true
+  separator: ";
   comment: "Correction method (top)"
 
 C36:
-  dtype: string
+  dtype: list[string]
   allowed:
     - "[Horner plot]"
     - "[Cylinder source method]"
@@ -953,6 +942,8 @@ C36:
     - "[unspecified]"
     - "[not corrected]"
   obligation: "R"
+  multi_choice: true
+  separator: ";
   comment: "Correction method (bottom)"
 
 C37:
@@ -988,7 +979,7 @@ C40:
 
   
 C41:
-  dtype: string
+  dtype: list[string]
   allowed:
     - "[In-situ probe]"
     - "[Core-log integration]"
@@ -1001,19 +992,23 @@ C41:
     - "[Other (specify in comments)]"
     - "[unspecified]"
   obligation: "M"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity source"
 
 C42:
-  dtype: string
+  dtype: list[string]
   allowed:
     - "[Actual heat-flow location]"
     - "[Other location]"
     - "[Literature-unspecified]"
   obligation: "M"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity location"
 
 C43:
-  dtype: string
+  dtype: list[string]
   allowed:
     - "[Lab - point source]"
     - "[Lab - line source - full space]"
@@ -1030,10 +1025,12 @@ C43:
     - "[Estimation - from mineral composition]"
     - "[unspecified]"
   obligation: "M"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity method"
 
 C44:
-  dtype: string
+  dtype: list[string]
   obligation: "M"
   allowed:
     - "[Saturated measured in-situ]"
@@ -1043,10 +1040,12 @@ C44:
     - "[Dry measured]"
     - "[Other (specify in comments)]"
     - "[unspecified]"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity saturation"
 
 C45:
-  dtype: string
+  dtype: list[string]
   obligation: "M"
   allowed:
     - "[Unrecorded ambient pT conditions]"
@@ -1059,10 +1058,12 @@ C45:
     - "[Corrected in-situ (T)]"
     - "[Corrected in-situ (pT)]"
     - "[unspecified]"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity pT conditions"
 
 C46:
-  dtype: string
+  dtype: list[string]
   obligation: "M"
   allowed:
     - "[T - Birch & Clark (1940)]"
@@ -1106,6 +1107,8 @@ C46:
     - "[Site-specific experimental relationships]"
     - "[Other (specify in comments)]"
     - "[unspecified]"
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity assumed functions"
 
 C47:
@@ -1115,7 +1118,7 @@ C47:
   comment: "Thermal conductivity number"
 
 C48:
-  dtype: string
+  dtype: list[string]
   obligation: "R"
   allowed:
     - "[Random or periodic depth sampling]"
@@ -1123,7 +1126,9 @@ C48:
     - "[Well log interpretation]"
     - "[Computation from probe sensing]"
     - "[Other (specify in comments)]"
-    - "[unspecified]"
+    - "[unspecified]
+  multi_choice: true
+  separator: ";
   comment: "Thermal conductivity averaging methodology"
 
 C49:
@@ -1133,11 +1138,11 @@ C49:
 
 
   # ===== ADMIN LEVEL (Axx) =====
-  # A01: { dtype: string,        obligation: "M" }
-  # A02: { dtype: string,        obligation: "O" }
-  # A03: { dtype: timestamp[ns], obligation: "O" }
-  # A04: { dtype: string,        obligation: "O" }
-  # A05: { dtype: string,        obligation: "O" }
-  # A06: { dtype: string,        allowed: ["continental","marine"], obligation: "O" }
-  # A07: { dtype: string,        obligation: "O" }
-  # A08: { dtype: string,        obligation: "O" }
+  A01: { dtype: string,        obligation: "M" }
+  A02: { dtype: string,        obligation: "O" }
+  A03: { dtype: timestamp[ns], obligation: "O" }
+  A04: { dtype: string,        obligation: "O" }
+  A05: { dtype: string,        obligation: "O" }
+  A06: { dtype: string,        allowed: ["continental","marine"], obligation: "O" }
+  A07: { dtype: string,        obligation: "O" }
+  A08: { dtype: string,        obligation: "O" }
