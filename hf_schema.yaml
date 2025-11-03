@@ -2,6 +2,35 @@ version: "1.0"
 schema_id: "heatflow:v1"
 name: "heat_flow_db_complete"
 
+# NORMALIZATION
+normalization:
+  string:
+    trim: true               # remove leading/trailing whitespace
+    collapse_space: true     # collapse multiple spaces into one
+    case_insensitive: true   # treat values case-insensitively
+    enforce_brackets: true   # ensure allowed vocab entries keep square brackets
+    normalize_separator: true # replace ',' with ';' in multi-entry fields
+    missing_tokens:           # interpret as NaN
+      - ""
+      - "-"
+      - "NA"
+      - "na"
+      - "none"
+      - "null"
+
+  numeric:
+    decimal_comma_to_dot: true     # "123,45" -> "123.45"
+    strip_thousands_separators:    # "1 234.56" -> "1234.56"
+      - " "
+      - "."
+      - "_"
+    missing_tokens:
+      - ""
+      - "NA"
+      - "na"
+      - "-"
+
+
 core:
   ID:
     dtype: int64
@@ -32,8 +61,7 @@ columns:
     dtype: string
     obligation: "M"
     comment: "Name"
-    # normalization: { trim: true, collapse_space: true }
-    # string_constraints: { max_length: 200 }
+
 
   P04:
     dtype: float64
@@ -63,6 +91,8 @@ columns:
       - "[Other (specify in comments)]"
       - "[unspecified]"
     obligation: "M"
+    multi_choice: true
+    separator: ";"
     comment: "Location Type (multi-select)"
 
   P08:
@@ -102,6 +132,8 @@ columns:
       - "[Other (specify in comments)]"
       - "[unspecified]"
     obligation: "M"
+    multi_choice: true
+    separator: ";"
     comment: "Type of Exploration Method (multi-select)"
 
   P13:
@@ -841,7 +873,7 @@ C30:
   comment: "Corrected temperature gradient uncertainty"
 
 
-  C31:
+C31:
   dtype: list[string]
   allowed:
     - "[LOGeq]"
@@ -906,29 +938,33 @@ C32:
   multi_choice: true
   separator: ";"
   comment: "Temperature method (bottom, multi-select)"
-}
 
 
+  C33: 
+    dtype: float64 
+    range: [0.0, 99.99]       
+    obligation: "R"  #Shut-in time (top )
 
-
-  C33: { dtype: float64, range: [0.0, 99.99],        obligation: "R" } #Shut-in time (top )
-  C34: { dtype: float64, range: [0.0, 99.99],        obligation: "R" } # Shut-in time (bottom)
+  C34:  
+    dtype: float64 
+    range: [0.0, 99.99]        
+    obligation: "R"  # Shut-in time (bottom)
   
   C35:
-  dtype: list[string]
-  allowed:
-    - "[Horner plot]"
-    - "[Cylinder source method]"
-    - "[Line source explosion method]"
-    - "[Inverse numerical modelling]"
-    - "[AAPG correction]"
-    - "[Other published correction (specify in comments)]"
-    - "[unspecified]"
-    - "[not corrected]"
-  obligation: "R"
-  multi_choice: true
-  separator: ";
-  comment: "Correction method (top)"
+    dtype: list[string]
+    allowed:
+      - "[Horner plot]"
+      - "[Cylinder source method]"
+      - "[Line source explosion method]"
+      - "[Inverse numerical modelling]"
+      - "[AAPG correction]"
+      - "[Other published correction (specify in comments)]"
+      - "[unspecified]"
+      - "[not corrected]"
+    obligation: "R"
+    multi_choice: true
+    separator: ";"
+    comment: "Correction method (top)"
 
 C36:
   dtype: list[string]
@@ -943,7 +979,7 @@ C36:
     - "[not corrected]"
   obligation: "R"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Correction method (bottom)"
 
 C37:
@@ -993,7 +1029,7 @@ C41:
     - "[unspecified]"
   obligation: "M"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity source"
 
 C42:
@@ -1004,7 +1040,7 @@ C42:
     - "[Literature-unspecified]"
   obligation: "M"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity location"
 
 C43:
@@ -1026,7 +1062,7 @@ C43:
     - "[unspecified]"
   obligation: "M"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity method"
 
 C44:
@@ -1041,7 +1077,7 @@ C44:
     - "[Other (specify in comments)]"
     - "[unspecified]"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity saturation"
 
 C45:
@@ -1059,7 +1095,7 @@ C45:
     - "[Corrected in-situ (pT)]"
     - "[unspecified]"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity pT conditions"
 
 C46:
@@ -1108,7 +1144,7 @@ C46:
     - "[Other (specify in comments)]"
     - "[unspecified]"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity assumed functions"
 
 C47:
@@ -1126,9 +1162,9 @@ C48:
     - "[Well log interpretation]"
     - "[Computation from probe sensing]"
     - "[Other (specify in comments)]"
-    - "[unspecified]
+    - "[unspecified]"
   multi_choice: true
-  separator: ";
+  separator: ";"
   comment: "Thermal conductivity averaging methodology"
 
 C49:
@@ -1138,11 +1174,28 @@ C49:
 
 
   # ===== ADMIN LEVEL (Axx) =====
-  A01: { dtype: string,        obligation: "M" }
-  A02: { dtype: string,        obligation: "O" }
-  A03: { dtype: timestamp[ns], obligation: "O" }
-  A04: { dtype: string,        obligation: "O" }
-  A05: { dtype: string,        obligation: "O" }
-  A06: { dtype: string,        allowed: ["continental","marine"], obligation: "O" }
-  A07: { dtype: string,        obligation: "O" }
-  A08: { dtype: string,        obligation: "O" }
+  A01:  
+    dtype: string        
+    obligation: "M" 
+  A02:  
+    dtype: string   
+    obligation: "O" 
+  A03: 
+    dtype: timestamp[ns] 
+    obligation: "O" 
+  A04: 
+   dtype: string       
+   obligation: "O" 
+  A05:
+    dtype: string
+    obligation: "O" 
+  A06:  
+    dtype: string,
+    allowed: ["continental","marine"]
+    obligation: "O" 
+  A07: 
+   dtype: string
+   obligation: "O" 
+  A08:  
+    dtype: string
+    obligation: "O" 
