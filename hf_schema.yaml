@@ -1174,29 +1174,29 @@ C49:
   comment: "IGSN (International Geo Sample Number)"
 
 
-  # ===== ADMIN LEVEL (Axx) =====
-  A1:  
-    dtype: string        
-    obligation: "M" 
-  A2:  
-    dtype: string   
-    obligation: "O" 
-  A3: 
-    dtype: timestamp[ns] 
-    obligation: "O" 
-  A4: 
-   dtype: string       
-   obligation: "O" 
-  A5:
-    dtype: string
-    obligation: "O" 
-  A6:  
-    dtype: string,
-    allowed: ["continental","marine"]
-    obligation: "O" 
-  A7: 
-   dtype: string
-   obligation: "O" 
-  A8:  
-    dtype: string
-    obligation: "O" 
+# ===== ADMIN LEVEL (Axx) =====
+A1:  
+  dtype: string        
+  obligation: "M" 
+A2:  
+  dtype: string   
+  obligation: "O" 
+A3: 
+  dtype: timestamp[ns] 
+  obligation: "O" 
+A4: 
+  dtype: string       
+  obligation: "O" 
+A5:
+  dtype: string
+  obligation: "O" 
+A6:  
+  dtype: string,
+  allowed: ["continental","marine"]
+  obligation: "O" 
+A7: 
+  dtype: string
+  obligation: "O" 
+A8:  
+  dtype: string
+  obligation: "O" 
