@@ -14,9 +14,10 @@ normalization:
       - ""
       - "-"
       - "NA"
-      - "na"
+      - "<NA>"
       - "none"
       - "null"
+      
 
   numeric:
     decimal_comma_to_dot: true     # "123,45" -> "123.45"
@@ -27,7 +28,7 @@ normalization:
     missing_tokens:
       - ""
       - "NA"
-      - "na"
+      - "<NA>"
       - "-"
 
 
@@ -45,43 +46,43 @@ core:
 
 columns:
   # ===== PARENT LEVEL (Pxx) =====
-  P01:
+  P1:
     dtype: float64
     range: [-999999.9, 999999.9]
     obligation: "M"
     comment: "HF Value"
 
-  P02:
+  P2:
     dtype: float64
     range: [0.0, 999999.9]
     obligation: "M"
     comment: "HF Uncertainty"
 
-  P03:
+  P3:
     dtype: string
     obligation: "M"
     comment: "Name"
 
 
-  P04:
+  P4:
     dtype: float64
     range: [-90.0, 90.0]
     obligation: "M"
     comment: "Latitude"
 
-  P05:
+  P5:
     dtype: float64
     range: [-180.0, 180.0]
     obligation: "M"
     comment: "Longitude"
 
-  P06:
+  P6:
     dtype: float64
     range: [-12000.0, 9000.0]
     obligation: "M"
     comment: "Elevation"
 
-  P07:
+  P7:
     dtype: list[string]
     allowed:
       - "[Onshore (continental)]"
@@ -95,12 +96,12 @@ columns:
     separator: ";"
     comment: "Location Type (multi-select)"
 
-  P08:
+  P8:
     dtype: string
     obligation: "M"
     comment: "Comments (Parent level)"
 
-  P09:
+  P9:
     dtype: string
     allowed: ["Yes", "No", "[unspecified]"]
     obligation: "R"
@@ -156,19 +157,19 @@ columns:
 
   
   # ===== CHILD LEVEL (Cxx) =====
-C01:
+C1:
   dtype: float64
   range: [-999999.9, 999999.9]
   obligation: "M"
   comment: "HF Value (Child level)"
 
-C02:
+C2:
   dtype: float64
   range: [0.0, 999999.9]
   obligation: "R"
   comment: "HF Uncertainty (Child level)"
 
-C03:
+C3:
   dtype: list[string]
   allowed:
     - "[Interval method]"
@@ -182,37 +183,37 @@ C03:
   separator: ";"
   comment: "HF Method (multi-select)"
 
-C04:
+C4:
   dtype: float64
   range: [0.0, 19999.9]
   obligation: "M"
   comment: "HF Interval Top"
 
-C05:
+C5:
   dtype: float64
   range: [0.0, 19999.9]
   obligation: "M"
   comment: "HF Interval Bottom"
 
-C06:
+C6:
   dtype: float64
   range: [0.0, 999.9]
   obligation: "M"
   comment: "Penetration Depth"
 
-C07:
+C7:
   dtype: string
   obligation: "M"
   comment: "Primary publication reference"
 
-C08:
+C8:
   dtype: list[string]
   obligation: "R"
   multi_choice: true
   separator: ";"
   comment: "Primary reference (multi-entry)"
   
-C09:
+C9:
   dtype: string
   allowed:
     - "[Yes]"
@@ -1174,28 +1175,28 @@ C49:
 
 
   # ===== ADMIN LEVEL (Axx) =====
-  A01:  
+  A1:  
     dtype: string        
     obligation: "M" 
-  A02:  
+  A2:  
     dtype: string   
     obligation: "O" 
-  A03: 
+  A3: 
     dtype: timestamp[ns] 
     obligation: "O" 
-  A04: 
+  A4: 
    dtype: string       
    obligation: "O" 
-  A05:
+  A5:
     dtype: string
     obligation: "O" 
-  A06:  
+  A6:  
     dtype: string,
     allowed: ["continental","marine"]
     obligation: "O" 
-  A07: 
+  A7: 
    dtype: string
    obligation: "O" 
-  A08:  
+  A8:  
     dtype: string
     obligation: "O" 
