@@ -17,14 +17,11 @@ normalization:
       - "<NA>"
       - "none"
       - "null"
-      
 
   numeric:
     decimal_comma_to_dot: true     # "123,45" -> "123.45"
     strip_thousands_separators:    # "1 234.56" -> "1234.56"
       - " "
-      - "."
-      - "_"
     missing_tokens:
       - ""
       - "NA"
@@ -1177,26 +1174,26 @@ columns:
   # ===== ADMIN LEVEL (Axx) =====
   A1:  
     dtype: string        
-    obligation: "M" 
+    obligation: "-" 
   A2:  
     dtype: string   
-    obligation: "O" 
+    obligation: "-" 
   A3: 
     dtype: timestamp[ns] 
-    obligation: "O" 
+    obligation: "-" 
   A4: 
     dtype: string       
-    obligation: "O" 
+    obligation: "-" 
   A5:
     dtype: string
-    obligation: "O" 
-  A6:  
+    obligation: "-" 
+  A6: 
+    dtype: string
+    obligation: "-" 
+  A7:  
     dtype: string,
     allowed: ["continental","marine"]
-    obligation: "O" 
-  A7: 
-    dtype: string
-    obligation: "O" 
+    obligation: "-" 
   A8:  
     dtype: string
-    obligation: "O" 
+    obligation: "-" 
