@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+# System: Pip aktualisieren
+RUN pip install --no-cache-dir --upgrade pip
+
+WORKDIR /app
+
+# Dependencies 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Code + Schema
+COPY etl/ etl/
+COPY hf_schema.yaml .
+COPY main.py .
+
+ENTRYPOINT ["python", "main.py"]
