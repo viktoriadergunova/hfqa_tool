@@ -5,8 +5,8 @@ import pandas as pd
 import yaml
 
 from etl.normalization import normalize_only_data_rows
-from etl.typing import apply_schema_types
-from etl.validation import add_mandatory_flags, add_range_and_allowed_flags
+from etl.typecasting import apply_schema_types
+from etl.validator import add_mandatory_flags, add_range_and_allowed_flags
 
 
 def run_validation(input_path: str, schema_path: str, out_report: str):
