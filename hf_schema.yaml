@@ -95,7 +95,7 @@ columns:
 
   P8:
     dtype: string
-    obligation: "M"
+    obligation: "R"
     comment: "Comments (Parent level)"
 
   P9:
