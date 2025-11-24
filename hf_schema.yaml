@@ -12,7 +12,6 @@ normalization:
     normalize_separator: true # replace ',' with ';' in multi-entry fields
     missing_tokens:           # interpret as NaN
       - ""
-      - "-"
       - "NA"
       - "<NA>"
       - "none"
@@ -26,7 +25,6 @@ normalization:
       - ""
       - "NA"
       - "<NA>"
-      - "-"
 
 
 core:
@@ -100,7 +98,7 @@ columns:
 
   P9:
     dtype: string
-    allowed: ["Yes", "No", "[unspecified]"]
+    allowed: ["[Yes]", "[No]", "[unspecified]"]
     obligation: "R"
     comment: "Correction HP"
 
@@ -306,7 +304,7 @@ columns:
     obligation: "M"
     comment: "Flag: transient corrections"
 
-    C18:
+  C18:
     dtype: string
     allowed:
       - "[Present and corrected]"
@@ -317,7 +315,7 @@ columns:
     obligation: "M"
     comment: "Flag: convection processes corrections"
 
-    C19:
+  C19:
     dtype: string
     allowed:
       - "[Present and corrected]"
@@ -938,31 +936,33 @@ columns:
     comment: "Temperature method (bottom, multi-select)"
 
 
-    C33: 
-      dtype: float64 
-      range: [0.0, 99.99]       
-      obligation: "R"  #Shut-in time (top )
+  C33: 
+    dtype: float64 
+    range: [0.0, 99.99]       
+    obligation: "R" 
+    comment: "Shut-in time (top)"
 
-    C34:  
-      dtype: float64 
-      range: [0.0, 99.99]        
-      obligation: "R"  # Shut-in time (bottom)
+  C34:  
+    dtype: float64 
+    range: [0.0, 99.99]        
+    obligation: "R" 
+    comment: "Shut-in time (bottom)"
     
-    C35:
-      dtype: list[string]
-      allowed:
-        - "[Horner plot]"
-        - "[Cylinder source method]"
-        - "[Line source explosion method]"
-        - "[Inverse numerical modelling]"
-        - "[AAPG correction]"
-        - "[Other published correction (specify in comments)]"
-        - "[unspecified]"
-        - "[not corrected]"
-      obligation: "R"
-      multi_choice: true
-      separator: ";"
-      comment: "Correction method (top)"
+  C35:
+    dtype: list[string]
+    allowed:
+      - "[Horner plot]"
+      - "[Cylinder source method]"
+      - "[Line source explosion method]"
+      - "[Inverse numerical modelling]"
+      - "[AAPG correction]"
+      - "[Other published correction (specify in comments)]"
+      - "[unspecified]"
+      - "[not corrected]"
+    obligation: "R"
+    multi_choice: true
+    separator: ";"
+    comment: "Correction method (top)"
 
   C36:
     dtype: list[string]
@@ -986,17 +986,17 @@ columns:
     obligation: "R"
     comment: "Number of temperature measurements"
 
+    
   C38:
     dtype: string
-    pattern: "^[0-9]{4}[-–][0-9]{2}$"  
-    allowed:
-      - "[unspecified]"
+    pattern: '^([0-9]{4}[-–][0-9]{2}|\[unspecified\])$'
     obligation: "M"
-    comment: "Date of acquisition (format: YYYY-MM or [unspecified])"
+    comment: "Date of acquisition (format: YYYY-MM or [unspecified])" 
     normalization:
+      replace_dash: "–"  # normalize en-dash to hyphen
       trim: true
       collapse_space: true
-      replace_dash: "–" 
+      
 
 
   C39:
@@ -1175,25 +1175,35 @@ columns:
   A1:  
     dtype: string        
     obligation: "-" 
+    comment: "Reviewer name"
   A2:  
     dtype: string   
     obligation: "-" 
+    comment: "Reviewer comment"
   A3: 
-    dtype: timestamp[ns] 
+    dtype: date
     obligation: "-" 
+    format: "%d.%m.%Y"
+    comment: "Reviewer Date (DD.MM.YYYY)"
+
   A4: 
     dtype: string       
     obligation: "-" 
+    comment: "Country"
   A5:
     dtype: string
     obligation: "-" 
+    comment: "Region"
   A6: 
     dtype: string
     obligation: "-" 
+    comment: "Continent"
   A7:  
-    dtype: string,
-    allowed: ["continental","marine"]
+    dtype: string
+    allowed: ["continental","marine"] # due to brackets needs fixing 
     obligation: "-" 
+    comment: "Domain (continental/marine)"
   A8:  
     dtype: string
     obligation: "-" 
+    comment: "Unique entry ID"

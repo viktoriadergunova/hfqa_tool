@@ -13,44 +13,44 @@ def apply_schema_types(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     """Cast dataframe columns to target dtypes defined in schema (data rows only)."""
     df = df.copy()
 
+    # Separate meta and data rows
+    if "row_type" in df.columns:
+        meta_rows = df[df["row_type"] == "meta"].copy()
+        data_rows = df[df["row_type"] != "meta"].copy()
+    else:
+        meta_rows = pd.DataFrame(columns=df.columns)
+        data_rows = df
+
+    # Apply typecasting to data rows only
     for col_name, col_spec in _iter_schema_specs(schema):
-        if col_name not in df.columns:
+        if col_name not in data_rows.columns:
             continue
 
         expected_dtype = str(col_spec.get("dtype", "")).strip().lower()
         if not expected_dtype:
             continue
 
-        # --- LIST TYPES ---
         if "list[" in expected_dtype:
-            # Keep as string for now; split later if needed
-            df[col_name] = df[col_name].astype("string[pyarrow]")
-            continue
+            data_rows[col_name] = data_rows[col_name].astype("string[pyarrow]")
+        elif "string" in expected_dtype:
+            data_rows[col_name] = data_rows[col_name].astype("string[pyarrow]")
+        elif "float" in expected_dtype:
+            data_rows[col_name] = pd.to_numeric(data_rows[col_name], errors="coerce").astype("float64")
+        elif "int" in expected_dtype:
+            data_rows[col_name] = pd.to_numeric(data_rows[col_name], errors="coerce").astype("Int64")
+        elif "date" in expected_dtype or "datetime" in expected_dtype:
+            date_format = col_spec.get("format")
+            if date_format:
+                data_rows[col_name] = pd.to_datetime(data_rows[col_name], format=date_format, errors="coerce")
+            else:
+                data_rows[col_name] = pd.to_datetime(data_rows[col_name], errors="coerce", dayfirst=True)
+        else:
+            data_rows[col_name] = data_rows[col_name].astype("string[pyarrow]")
 
-        # --- STRING ---
-        if "string" in expected_dtype:
-            df[col_name] = df[col_name].astype("string[pyarrow]")
-            continue
+    # Combine back with meta rows and preserve order
+    df_combined = pd.concat([meta_rows, data_rows]).sort_index()
+    return df_combined
 
-        # --- FLOAT ---
-        if "float" in expected_dtype:
-            df[col_name] = pd.to_numeric(df[col_name], errors="coerce").astype("float64")
-            continue
-
-        # --- INT ---
-        if "int" in expected_dtype:
-            df[col_name] = pd.to_numeric(df[col_name], errors="coerce").astype("Int64")
-            continue
-
-        # --- DATETIME ---
-        if "timestamp" in expected_dtype or "datetime" in expected_dtype:
-            df[col_name] = pd.to_datetime(df[col_name], errors="coerce", dayfirst=True)
-            continue
-
-        # --- FALLBACK: STRING ---
-        df[col_name] = df[col_name].astype("string[pyarrow]")
-
-    return df
 
 def verify_schema_types(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     """Return a DataFrame summarizing dtype verification."""

@@ -62,28 +62,35 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 
         dtype = str(col_spec.get("dtype", ""))
 
+        # Merge global and column-specific normalization rules
+        col_norm = col_spec.get("normalization", {})
+        effective_string_norm = string_norm.copy()
+        effective_string_norm.update(col_norm)
+
         # ---------- STRING ----------
         if "string" in dtype:
             s = df[col_name].astype("string")
 
-            # global string normalization
-            missing_tokens = string_norm.get("missing_tokens", [])
+            missing_tokens = effective_string_norm.get("missing_tokens", [])
             if missing_tokens:
                 s = s.replace(missing_tokens, pd.NA)
 
-            if string_norm.get("trim", False):
+            if effective_string_norm.get("trim", False):
                 s = s.str.strip()
 
-            if string_norm.get("collapse_space", False):
+            if effective_string_norm.get("collapse_space", False):
                 s = s.str.replace(r"\s+", " ", regex=True)
 
-            if string_norm.get("normalize_separator", False):
+            if effective_string_norm.get("normalize_separator", False):
                 s = s.str.replace(",", ";")
 
-            if string_norm.get("case_insensitive", False):
+            if effective_string_norm.get("case_insensitive", False):
                 s = s.str.lower()
 
-            # vocabulary syntax normalization for bracketed enums
+            if "replace_dash" in effective_string_norm:
+                dash_char = effective_string_norm["replace_dash"]
+                s = s.str.replace(dash_char, "-", regex=False)
+
             allowed = col_spec.get("allowed")
             needs_vocab_norm = bool(allowed) and any(
                 "[" in str(a) or "]" in str(a) for a in allowed
@@ -102,11 +109,9 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
             if missing_tokens:
                 s = s.replace(missing_tokens, pd.NA)
 
-            # strip thousands separators (now only space in your YAML)
             for sep in numeric_norm.get("strip_thousands_separators", []):
                 s = s.str.replace(sep, "", regex=False)
 
-            # convert decimal comma to dot
             if numeric_norm.get("decimal_comma_to_dot", False):
                 s = s.str.replace(",", ".", regex=False)
 
@@ -115,18 +120,20 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     return df
 
 
+
 def normalize_only_data_rows(df: pd.DataFrame, schema: dict):
-    """
-    Return (df_meta, df_data_norm)
-    """
     df = df.copy()
 
     if "row_type" not in df.columns:
         df_data_norm = normalize_dataframe(df, schema)
+        df_data_norm["row_type"] = "data"  # treat all as data
         return None, df_data_norm
 
     df_meta = df[df["row_type"] == "meta"].copy()
     df_data = df[df["row_type"] == "data"].copy()
 
     df_data_norm = normalize_dataframe(df_data, schema)
+    df_data_norm["row_type"] = "data"
+    df_meta["row_type"] = "meta"
+
     return df_meta, df_data_norm
