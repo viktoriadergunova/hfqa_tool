@@ -8,7 +8,6 @@ def _iter_schema_specs(schema: dict):
     specs.update(schema.get("columns", {}))
     return specs.items()
 
-import pandas as pd
 
 def add_mandatory_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     """
@@ -37,7 +36,6 @@ def add_mandatory_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     return df
 
 
-
 def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     """
     Attach boolean flag columns for numeric ranges and allowed-values checks.
@@ -51,6 +49,11 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
         data_mask = df["row_type"] == "data"
     else:
         data_mask = pd.Series(True, index=df.index)
+
+    # globale String-Norm (für enforce_brackets-Default)
+    norm_cfg = schema.get("normalization", {})
+    global_string_norm = norm_cfg.get("string", {})
+    global_enforce_brackets = bool(global_string_norm.get("enforce_brackets", False))
 
     for col_name, col_spec in _iter_schema_specs(schema):
         if col_name not in df.columns:
@@ -74,12 +77,38 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
         # ---------- ALLOWED (vocab) ----------
         allowed_raw = col_spec.get("allowed")
         if allowed_raw is not None:
-            # normalize allowed list using the same vocabulary logic as data
             allowed_series = pd.Series(allowed_raw, dtype="string")
-            allowed_norm = normalize_vocabulary_series(allowed_series)
+
+            # Haben die allowed-Werte selbst schon Klammern?
+            has_bracketed_allowed = any(
+                "[" in str(a) or "]" in str(a) for a in allowed_raw
+            )
+
+            # spaltenspezifische Normalisierung lesen
+            col_norm = col_spec.get("normalization", {})
+            col_enforce = col_norm.get("enforce_brackets")
+
+            # effektives enforce_brackets: Spalte überschreibt global
+            if col_enforce is None:
+                enforce_brackets = global_enforce_brackets
+            else:
+                enforce_brackets = bool(col_enforce)
+
+            # Nur wenn:
+            #  - global/Spalte enforce_brackets True ODER
+            #  - allowed-Werte selbst Klammern haben
+            # wird normalize_vocabulary_series angewendet
+            use_vocab_norm = enforce_brackets or has_bracketed_allowed
+
+            if use_vocab_norm:
+                allowed_norm = normalize_vocabulary_series(allowed_series)
+            else:
+                allowed_norm = allowed_series
+
             allowed_set = {str(a).strip().lower() for a in allowed_norm.dropna()}
 
-            # normalize data side (already normalized, but this is safe)
+            # Daten-Seite: ist bereits durch normalize_dataframe gelaufen;
+            # hier zur Sicherheit nochmal strip + lowercase
             s = df[col_name].astype("string").str.strip().str.lower()
 
             # handle multi-choice columns correctly

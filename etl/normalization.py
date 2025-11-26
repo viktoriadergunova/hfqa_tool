@@ -1,16 +1,12 @@
 import pandas as pd
 import re
 
+import pandas as pd
+import re
+
 def normalize_vocabulary_series(s: pd.Series) -> pd.Series:
     """
     Normalize bracketed vocabulary entries, including multi-valued cells.
-
-    Examples (after global lowercase + trim):  # ADD MORE HERE IF FOUND
-      "Drilling"                          -> "[drilling]"
-      "[Drilling ]"                       -> "[drilling]"
-      "[Drilling / Clustering]"           -> "[drilling-clustering]"
-      "[Probing (offshore ocean)]"        -> "[probing-(offshore-ocean)]"
-      "[x]; [y / z]"                      -> "[x];[y-z]"
     """
     s = s.astype("string")
 
@@ -49,10 +45,11 @@ def normalize_vocabulary_series(s: pd.Series) -> pd.Series:
 
     return s.map(_norm_value)
 
+
 def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     norm_cfg = schema.get("normalization", {})
-    string_norm = norm_cfg.get("string", {})
-    numeric_norm = norm_cfg.get("numeric", {})
+    global_string_norm = norm_cfg.get("string", {})
+    global_numeric_norm = norm_cfg.get("numeric", {})
 
     df = df.copy()
 
@@ -62,41 +59,51 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 
         dtype = str(col_spec.get("dtype", ""))
 
-        # Merge global and column-specific normalization rules
+        # --- globale + spaltenspezifische String-Norm zusammenführen ---
         col_norm = col_spec.get("normalization", {})
-        effective_string_norm = string_norm.copy()
+        effective_string_norm = global_string_norm.copy()
         effective_string_norm.update(col_norm)
 
-        # ---------- STRING ----------
+        # ---------- STRING (inkl. list[string] als Textbasis) ----------
         if "string" in dtype:
             s = df[col_name].astype("string")
 
+            # missing tokens
             missing_tokens = effective_string_norm.get("missing_tokens", [])
             if missing_tokens:
                 s = s.replace(missing_tokens, pd.NA)
 
+            # trim / whitespace
             if effective_string_norm.get("trim", False):
                 s = s.str.strip()
 
             if effective_string_norm.get("collapse_space", False):
                 s = s.str.replace(r"\s+", " ", regex=True)
 
+            # Separator-Normalisierung (z.B. für multi_choice Felder)
             if effective_string_norm.get("normalize_separator", False):
-                s = s.str.replace(",", ";")
+                s = s.str.replace(",", ";", regex=False)
 
+            # case-insensitive: alles auf lowercase
             if effective_string_norm.get("case_insensitive", False):
                 s = s.str.lower()
 
+            # spezielle Dash-Normalisierung (z.B. C38)
             if "replace_dash" in effective_string_norm:
                 dash_char = effective_string_norm["replace_dash"]
                 s = s.str.replace(dash_char, "-", regex=False)
 
+            # --- entscheiden, ob Vokabular-Norm mit Klammern nötig ist ---
             allowed = col_spec.get("allowed")
-            needs_vocab_norm = bool(allowed) and any(
+            has_bracketed_allowed = bool(allowed) and any(
                 "[" in str(a) or "]" in str(a) for a in allowed
             )
+            enforce_brackets = bool(effective_string_norm.get("enforce_brackets", False))
 
-            if needs_vocab_norm:
+            # Nur wenn:
+            #  - global/column enforce_brackets True ODER
+            #  - allowed-Werte selbst Klammern enthalten
+            if enforce_brackets or has_bracketed_allowed:
                 s = normalize_vocabulary_series(s)
 
             df[col_name] = s
@@ -105,14 +112,14 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
         elif "float" in dtype or "int" in dtype:
             s = df[col_name].astype("string")
 
-            missing_tokens = numeric_norm.get("missing_tokens", [])
+            missing_tokens = global_numeric_norm.get("missing_tokens", [])
             if missing_tokens:
                 s = s.replace(missing_tokens, pd.NA)
 
-            for sep in numeric_norm.get("strip_thousands_separators", []):
+            for sep in global_numeric_norm.get("strip_thousands_separators", []):
                 s = s.str.replace(sep, "", regex=False)
 
-            if numeric_norm.get("decimal_comma_to_dot", False):
+            if global_numeric_norm.get("decimal_comma_to_dot", False):
                 s = s.str.replace(",", ".", regex=False)
 
             df[col_name] = s
@@ -120,13 +127,12 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     return df
 
 
-
 def normalize_only_data_rows(df: pd.DataFrame, schema: dict):
     df = df.copy()
 
     if "row_type" not in df.columns:
         df_data_norm = normalize_dataframe(df, schema)
-        df_data_norm["row_type"] = "data"  # treat all as data
+        df_data_norm["row_type"] = "data"
         return None, df_data_norm
 
     df_meta = df[df["row_type"] == "meta"].copy()

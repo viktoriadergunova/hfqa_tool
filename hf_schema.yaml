@@ -652,6 +652,8 @@ columns:
     multi_choice: true
     separator: ";"
     comment: "Lithology"
+    normalization: 
+      enforce_brackets: false
 
 
   C26:
@@ -842,6 +844,8 @@ columns:
     multi_choice: true
     separator: ";"
     comment: "Stratigraphy"
+    normalization: 
+      enforce_brackets: false
 
 
   C27:
@@ -1198,11 +1202,16 @@ columns:
     dtype: string
     obligation: "-" 
     comment: "Continent"
-  A7:  
+  A7:
     dtype: string
-    allowed: ["continental","marine"] # due to brackets needs fixing 
-    obligation: "-" 
+    allowed:
+      - "continental"
+      - "marine"
+    obligation: "-"
     comment: "Domain (continental/marine)"
+    normalization:
+      enforce_brackets: false
+
   A8:  
     dtype: string
     obligation: "-" 
