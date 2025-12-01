@@ -39,6 +39,7 @@ core:
     dtype: string
     allowed: ["Parent", "Child", "Admin"]
 
+
 columns:
   # ===== PARENT LEVEL (Pxx) =====
   P1:
@@ -193,8 +194,8 @@ columns:
   C6:
     dtype: float64
     range: [0.0, 999.9]
-    obligation: "M"
-    comment: "Penetration Depth"
+    obligation: "R"
+    comment: "Penetration Depth" # same  procedure as for tilt (C23); only check mandatory if probing 
 
   C7:
     dtype: string
@@ -371,7 +372,7 @@ columns:
   C23:
     dtype: float64
     range: [0.0, 99.9]
-    obligation: "M"
+    obligation: "R" # Relevant instead of M, and conditional check added for marine vs continental
     comment: "Probe tilt"
 
   C24:

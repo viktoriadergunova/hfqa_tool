@@ -4,7 +4,7 @@ import pandas as pd
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from etl.validator import add_mandatory_flags
+from validator.functional_validator import add_mandatory_flags
 
 
 INPUT_XLSX = "testing/obligation_test.xlsx"

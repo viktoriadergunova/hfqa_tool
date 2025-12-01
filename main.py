@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+import time
 
 import pandas as pd
 import yaml
@@ -9,17 +10,19 @@ import yaml
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from etl.validator import add_mandatory_flags, add_range_and_allowed_flags
+from validator.functional_validator import add_mandatory_flags, add_range_and_allowed_flags
+from validator.conditional_validator import apply_conditional_rules
 
 
 def run_validation(
     input_path: str,
-    schema_path: str,
     out_report: str,
     sheet_name: int = 0,
     meta_rows: int = 7,
     debug_prefix: str | None = None,
 ) -> None:
+    start_time = time.time()
+
     input_path = Path(input_path)
 
     # -------------------------------------------------------------
@@ -43,17 +46,25 @@ def run_validation(
         df_raw.to_parquet(f"{debug_prefix}_01_raw.parquet", index=False)
 
     # -------------------------------------------------------------
-    # 2) Schema
+    # 2) Schema laden
     # -------------------------------------------------------------
+    schema_path = "hf_schema.yaml"
     logging.info("loading schema: %s", schema_path)
     with open(schema_path, "r", encoding="utf-8") as f:
         schema = yaml.safe_load(f)
 
     # -------------------------------------------------------------
-    # 3) Normalization 
+    # 2b) Conditional rules laden
+    # -------------------------------------------------------------
+    conditional_path = "conditional_rules.yaml"
+    logging.info("loading conditional rules: %s", conditional_path)
+    with open(conditional_path, "r", encoding="utf-8") as f:
+        cond_cfg = yaml.safe_load(f)
+
+    # -------------------------------------------------------------
+    # 3) Normalisierung
     # -------------------------------------------------------------
     df_meta, df_data_norm = normalize_only_data_rows(df_raw, schema)
-    # df_meta wird für die Validierung ignoriert
     if debug_prefix:
         df_data_norm.to_parquet(f"{debug_prefix}_02_data_norm.parquet", index=False)
 
@@ -61,21 +72,21 @@ def run_validation(
     # 4) Typ-Casting 
     # -------------------------------------------------------------
     df_data_typed = apply_schema_types(df_data_norm, schema)
-
     if debug_prefix:
         df_data_typed.to_parquet(f"{debug_prefix}_03_data_typed.parquet", index=False)
 
     # -------------------------------------------------------------
-    # 5) Validation
+    # 5) Validation (funktional + konditional)
     # -------------------------------------------------------------
     df_checked = add_mandatory_flags(df_data_typed, schema)
     df_checked = add_range_and_allowed_flags(df_checked, schema)
+    df_checked = apply_conditional_rules(df_checked, cond_cfg)
 
     if debug_prefix:
         df_checked.to_parquet(f"{debug_prefix}_04_checked.parquet", index=False)
 
     # -------------------------------------------------------------
-    # 6) Report 
+    # 6) Report + Statistik
     # -------------------------------------------------------------
 
     # Startindex der Datenzeilen (für Zählung ab 1)
@@ -92,7 +103,20 @@ def run_validation(
                 return section_dict[col_name].get("comment", "")
         return ""
 
-    problems = []
+    # Alte Struktur: gruppiert nach column + flag
+    problems_grouped = []
+
+    # Neue Struktur: jede Verletzung einzeln
+    violations = []  # list of {row_data_number, column, flag, comment}
+
+    # Statistik
+    functional_error_count = 0
+    conditional_error_count = 0
+    per_flag_counts: dict[str, int] = {}  # flag_type -> count (Anzahl betroffener Zellen)
+
+    rows_any_error = set()
+    rows_functional_error = set()
+    rows_conditional_error = set()
 
     for col in df_checked.columns:
         if "__" not in col:
@@ -104,20 +128,31 @@ def run_validation(
 
         col_name, flag_type = col.split("__", 1)
 
+        # betroffene Indexe (DataFrame-Indizes)
         bad_indices_raw = df_checked.index[flag_col].tolist()
         if not bad_indices_raw:
             continue
 
+        n_errors_flag = int(flag_col.sum())
+
+        # Kategorie: funktional vs. konditional
+        is_conditional = flag_type.startswith("cond_")
+        if is_conditional:
+            conditional_error_count += n_errors_flag
+        else:
+            functional_error_count += n_errors_flag
+
+        per_flag_counts[flag_type] = per_flag_counts.get(flag_type, 0) + n_errors_flag
 
         bad_indices = [int(i) for i in bad_indices_raw]
-
         comment = get_col_comment(schema, col_name)
         data_row_numbers = []
 
         for idx in bad_indices:
-            data_row = int((idx - first_data_index) + 1) 
+            data_row = int((idx - first_data_index) + 1)
             data_row_numbers.append(data_row)
 
+            # fürs Logging wie bisher
             logging.info(
                 "row=%d col=%s flag=%s comment=%s",
                 data_row,
@@ -126,24 +161,86 @@ def run_validation(
                 comment,
             )
 
-        problems.append(
+            # detaillierter Eintrag (1:1 zu deinem Log-Beispiel)
+            violations.append(
+                {
+                    "row_data_number": data_row,
+                    "column": col_name,
+                    "flag": flag_type,
+                    "comment": comment,
+                }
+            )
+
+            rows_any_error.add(data_row)
+            if is_conditional:
+                rows_conditional_error.add(data_row)
+            else:
+                rows_functional_error.add(data_row)
+
+        # gruppierte Darstellung wie bisher
+        problems_grouped.append(
             {
                 "column": str(col_name),
                 "flag": str(flag_type),
-                "rows_data_number": [int(x) for x in data_row_numbers], 
+                "rows_data_number": [int(x) for x in data_row_numbers],
                 "comment": str(comment),
             }
         )
 
+    end_time = time.time()
+    runtime_sec = end_time - start_time
+
+    total_rows = int(len(df_raw))
+    data_rows = int(len(df_data_norm))
+
+    # Zusammengefasste Statistik
+    summary = {
+        "total_rows_in_sheet": total_rows,
+        "data_rows_validated": data_rows,
+
+        "rows_with_any_error": len(rows_any_error),
+        "rows_with_functional_error": len(rows_functional_error),
+        "rows_with_conditional_error": len(rows_conditional_error),
+
+        "functional_error_count": functional_error_count,
+        "conditional_error_count": conditional_error_count,
+
+        # Anzahl Fehlerzellen pro Flag-Typ (z.B. "missing", "out_of_range", "cond_probing_requires_c23", ...)
+        "per_flag_counts": per_flag_counts,
+
+        "runtime_seconds": runtime_sec,
+    }
+
+    logging.info("====VOCABULARY VALIDATION SUMMARY ====")
+    logging.info("Total rows in sheet (incl. meta): %d", total_rows)
+    logging.info("Data rows validated: %d", data_rows)
+    logging.info("Rows with any error: %d", len(rows_any_error))
+    logging.info("Rows with functional errors: %d", len(rows_functional_error))
+    logging.info("Rows with conditional errors: %d", len(rows_conditional_error))
+    logging.info("Functional errors (cell count): %d", functional_error_count)
+    logging.info("Conditional errors (cell count): %d", conditional_error_count)
+    logging.info("Processing time: %.2f seconds", runtime_sec)
+
     logging.info("writing JSON report: %s", out_report)
     with open(out_report, "w", encoding="utf-8") as f:
-        json.dump({"problems": problems}, f, indent=2, ensure_ascii=False)
+        json.dump(
+            {
+                # alte Struktur (kompatibel)
+                "problems_grouped": problems_grouped,
+                # neue, feingranulare Struktur (1 Zeile pro Fehler, wie dein Log)
+                "violations": violations,
+                # zusammengefasste Statistik
+                "summary": summary,
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Pfad zur Excel-Datei")
-    parser.add_argument("--schema", required=True, help="Pfad zum YAML-Schema")
     parser.add_argument("--out", required=True, help="Pfad für JSON-Report")
     parser.add_argument("--sheet", type=int, default=0, help="Excel sheet index (e.g. 0, 1, ...)")
     parser.add_argument("--meta-rows", type=int, default=7, help="Anzahl Meta-Zeilen am Tabellenkopf")
@@ -159,7 +256,6 @@ def main():
 
     run_validation(
         input_path=args.input,
-        schema_path=args.schema,
         out_report=args.out,
         sheet_name=args.sheet,
         meta_rows=args.meta_rows,
@@ -169,4 +265,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
