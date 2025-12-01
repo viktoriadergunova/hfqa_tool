@@ -89,30 +89,31 @@ def run_validation(
     # 6) Report + Statistik
     # -------------------------------------------------------------
 
-    # Startindex der Datenzeilen (für Zählung ab 1)
     if len(df_checked.index) > 0:
         first_data_index = int(df_checked.index.min())
     else:
         first_data_index = 0
 
     def get_col_comment(schema_dict: dict, col_name: str) -> str:
-        """Kommentar für eine Spalte aus dem Schema holen."""
         for section in ("columns", "core"):
             section_dict = schema_dict.get(section, {})
             if col_name in section_dict:
                 return section_dict[col_name].get("comment", "")
         return ""
 
-    # Alte Struktur: gruppiert nach column + flag
     problems_grouped = []
+    violations = []  # jede Verletzung einzeln
 
-    # Neue Struktur: jede Verletzung einzeln
-    violations = []  # list of {row_data_number, column, flag, comment}
-
-    # Statistik
+    # Gesamtstatistik
     functional_error_count = 0
     conditional_error_count = 0
-    per_flag_counts: dict[str, int] = {}  # flag_type -> count (Anzahl betroffener Zellen)
+    per_flag_counts: dict[str, int] = {}
+
+    # NEU: funktionale Unterteilung
+    missing_error_count = 0          # __missing
+    range_error_count = 0            # __out_of_range
+    allowed_error_count = 0          # __invalid
+    other_functional_error_count = 0 # falls später noch andere Flags dazu kommen
 
     rows_any_error = set()
     rows_functional_error = set()
@@ -128,19 +129,27 @@ def run_validation(
 
         col_name, flag_type = col.split("__", 1)
 
-        # betroffene Indexe (DataFrame-Indizes)
         bad_indices_raw = df_checked.index[flag_col].tolist()
         if not bad_indices_raw:
             continue
 
         n_errors_flag = int(flag_col.sum())
 
-        # Kategorie: funktional vs. konditional
         is_conditional = flag_type.startswith("cond_")
+
         if is_conditional:
             conditional_error_count += n_errors_flag
         else:
             functional_error_count += n_errors_flag
+            # aufsplitten
+            if flag_type.endswith("missing"):
+                missing_error_count += n_errors_flag
+            elif flag_type.endswith("out_of_range"):
+                range_error_count += n_errors_flag
+            elif flag_type.endswith("invalid"):
+                allowed_error_count += n_errors_flag
+            else:
+                other_functional_error_count += n_errors_flag
 
         per_flag_counts[flag_type] = per_flag_counts.get(flag_type, 0) + n_errors_flag
 
@@ -152,7 +161,6 @@ def run_validation(
             data_row = int((idx - first_data_index) + 1)
             data_row_numbers.append(data_row)
 
-            # fürs Logging wie bisher
             logging.info(
                 "row=%d col=%s flag=%s comment=%s",
                 data_row,
@@ -161,7 +169,6 @@ def run_validation(
                 comment,
             )
 
-            # detaillierter Eintrag (1:1 zu deinem Log-Beispiel)
             violations.append(
                 {
                     "row_data_number": data_row,
@@ -177,12 +184,10 @@ def run_validation(
             else:
                 rows_functional_error.add(data_row)
 
-        # gruppierte Darstellung wie bisher
         problems_grouped.append(
             {
                 "column": str(col_name),
                 "flag": str(flag_type),
-                "rows_data_number": [int(x) for x in data_row_numbers],
                 "comment": str(comment),
             }
         )
@@ -193,7 +198,6 @@ def run_validation(
     total_rows = int(len(df_raw))
     data_rows = int(len(df_data_norm))
 
-    # Zusammengefasste Statistik
     summary = {
         "total_rows_in_sheet": total_rows,
         "data_rows_validated": data_rows,
@@ -205,9 +209,13 @@ def run_validation(
         "functional_error_count": functional_error_count,
         "conditional_error_count": conditional_error_count,
 
-        # Anzahl Fehlerzellen pro Flag-Typ (z.B. "missing", "out_of_range", "cond_probing_requires_c23", ...)
-        "per_flag_counts": per_flag_counts,
+        # NEU: funktional nach Typ
+        "functional_missing_error_count": missing_error_count,
+        "functional_range_error_count": range_error_count,
+        "functional_allowed_error_count": allowed_error_count,
+        "functional_other_error_count": other_functional_error_count,
 
+        "per_flag_counts": per_flag_counts,
         "runtime_seconds": runtime_sec,
     }
 
@@ -218,6 +226,10 @@ def run_validation(
     logging.info("Rows with functional errors: %d", len(rows_functional_error))
     logging.info("Rows with conditional errors: %d", len(rows_conditional_error))
     logging.info("Functional errors (cell count): %d", functional_error_count)
+    logging.info("  ├─ Missing errors: %d", missing_error_count)
+    logging.info("  ├─ Range errors: %d", range_error_count)
+    logging.info("  ├─ Allowed-value errors: %d", allowed_error_count)
+    logging.info("  └─ Other functional errors: %d", other_functional_error_count)
     logging.info("Conditional errors (cell count): %d", conditional_error_count)
     logging.info("Processing time: %.2f seconds", runtime_sec)
 
@@ -225,11 +237,7 @@ def run_validation(
     with open(out_report, "w", encoding="utf-8") as f:
         json.dump(
             {
-                # alte Struktur (kompatibel)
-                "problems_grouped": problems_grouped,
-                # neue, feingranulare Struktur (1 Zeile pro Fehler, wie dein Log)
                 "violations": violations,
-                # zusammengefasste Statistik
                 "summary": summary,
             },
             f,
