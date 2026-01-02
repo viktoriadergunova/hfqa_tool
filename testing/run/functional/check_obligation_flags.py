@@ -4,10 +4,10 @@ import pandas as pd
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from validator.functional_validator import add_mandatory_flags
+from vocab_check.functional_check import add_mandatory_flags
 
 
-INPUT_XLSX = "testing/obligation_test.xlsx"
+INPUT_XLSX = "testing/run/testing_files/obligation_test.xlsx"
 SCHEMA_PATH = "hf_schema.yaml"
 
 
@@ -19,7 +19,7 @@ def main():
     # --- Excel -> Parquet + row_type ---
     df_raw = excel_to_parquet(
         excel_path=INPUT_XLSX,
-        parquet_path="testing/obligation_test.raw.parquet",
+        parquet_path="testing/run/testing_files/obligation_test.raw.parquet",
         sheet_name=0,
         meta_rows=0,  # no meta rows here
     )

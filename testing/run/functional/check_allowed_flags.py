@@ -4,10 +4,10 @@ import pandas as pd
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from validator.functional_validator import add_range_and_allowed_flags
+from vocab_check.functional_check import add_range_and_allowed_flags
 
 
-INPUT_XLSX = "testing/range_test.xlsx"
+INPUT_XLSX = "testing/run/testing_files/allowed_test.xlsx"
 SCHEMA_PATH = "hf_schema.yaml"
 
 
@@ -18,20 +18,22 @@ def main():
 
     columns_spec = schema.get("columns", {})
 
-    # determine which columns have ranges
-    range_cols = []
+    # determine columns with allowed values
+    allowed_cols = []
+    multi_choice_map = {}
     for col_name, col_spec in columns_spec.items():
-        dtype = str(col_spec.get("dtype", "")).lower()
-        if "range" in col_spec and ("float" in dtype or "int" in dtype):
-            range_cols.append(col_name)
+        allowed = col_spec.get("allowed")
+        if allowed is not None:
+            allowed_cols.append(col_name)
+            multi_choice_map[col_name] = bool(col_spec.get("multi_choice", False))
 
-    print(f"Range columns in schema ({len(range_cols)}):")
-    print("  " + ", ".join(range_cols))
+    print(f"Allowed-value columns in schema ({len(allowed_cols)}):")
+    print("  " + ", ".join(allowed_cols))
 
     # --- Excel -> Parquet + row_type ---
     df_raw = excel_to_parquet(
         excel_path=INPUT_XLSX,
-        parquet_path="testing/range_test.raw.parquet",
+        parquet_path="testing/allowed_test.raw.parquet",
         sheet_name=0,
         meta_rows=0,  # no meta rows in this test file
     )
@@ -40,7 +42,7 @@ def main():
     df_meta, df_data_norm = normalize_only_data_rows(df_raw, schema)
     df_typed = apply_schema_types(df_data_norm, schema)
 
-    # --- Add range flags (and allowed, but we ignore allowed here) ---
+    # --- Add allowed flags (and range, but range is ignored here) ---
     df_checked = add_range_and_allowed_flags(df_typed, schema)
 
     if "__target_col" not in df_checked.columns or "__case" not in df_checked.columns:
@@ -49,50 +51,53 @@ def main():
 
     tests = []
 
-    # iterate over each row (one test case per row)
     for idx, row in df_checked.iterrows():
         target_col = row["__target_col"]
         case = row["__case"]
 
-        # ignore rows without target_col (shouldn't happen)
-        if pd.isna(target_col) or target_col not in range_cols:
+        if pd.isna(target_col) or target_col not in allowed_cols:
             continue
 
-        flag_col = f"{target_col}__out_of_range"
-        # if for some reason the flag column does not exist, treat as False
-        flag_val = bool(row[flag_col]) if flag_col in df_checked.columns else False
+        invalid_col = f"{target_col}__invalid"
+        flag_val = bool(row[invalid_col]) if invalid_col in df_checked.columns else False
 
-        # build test name
-        name = f"[range] {target_col} case '{case}'"
+        name = f"[allowed] {target_col} case '{case}'"
 
-        # expected behaviour
-        if case in ("too_low", "too_high"):
+        # Expected behaviour per case
+        if case in ("valid_single", "valid_multi"):
+            expected = False
+            if flag_val == expected:
+                tests.append((name, True, ""))
+            else:
+                msg = f"Expected {invalid_col} = False for case '{case}', but got True."
+                tests.append((name, False, msg))
+
+        elif case == "invalid_single":
             expected = True
             if flag_val == expected:
                 tests.append((name, True, ""))
             else:
-                msg = f"Expected {flag_col} = True for case '{case}', but got False."
+                msg = f"Expected {invalid_col} = True for case '{case}', but got False."
                 tests.append((name, False, msg))
 
-        elif case in ("at_lower", "at_upper"):
-            expected = False
+        elif case == "invalid_one_bad":
+            expected = True
             if flag_val == expected:
                 tests.append((name, True, ""))
             else:
-                msg = f"Expected {flag_col} = False at boundary case '{case}', but got True."
+                msg = f"Expected {invalid_col} = True for case '{case}' (one bad entry), but got False."
                 tests.append((name, False, msg))
 
         elif case == "missing":
-            # range must NOT flag missing values; out_of_range must be False
+            # Missing values should NOT be flagged as invalid
             expected = False
             if flag_val == expected:
                 tests.append((name, True, ""))
             else:
-                msg = f"Expected {flag_col} = False for missing value, but got True."
+                msg = f"Expected {invalid_col} = False for missing value, but got True."
                 tests.append((name, False, msg))
 
         else:
-            # unknown case label
             msg = f"Unknown case label '{case}' for column '{target_col}'."
             tests.append((name, False, msg))
 
@@ -102,9 +107,9 @@ def main():
     passed = sum(1 for _, ok, _ in tests if ok)
     failed = total - passed
 
-    print("\nRange test summary")
+    print("\nAllowed-value test summary")
     if total == 0:
-        print("No range tests were executed.")
+        print("No allowed-value tests were executed.")
         return
 
     bar_len = 40
@@ -113,7 +118,7 @@ def main():
 
     print(f"{bar}  {passed}/{total} test cases passed, {failed} failed.")
 
-    print("\nDetailed range test cases:")
+    print("\nDetailed allowed-value test cases:")
     for i, (name, ok, msg) in enumerate(tests, start=1):
         status = "PASS" if ok else "FAIL"
         print(f"{i:3d}) {status} - {name}")
@@ -121,9 +126,9 @@ def main():
             print(f"     {msg}")
 
     if failed == 0:
-        print("\nAll range tests passed.")
+        print("\nAll allowed-value tests passed.")
     else:
-        print("\nSome range tests failed.")
+        print("\nSome allowed-value tests failed.")
 
 
 if __name__ == "__main__":
