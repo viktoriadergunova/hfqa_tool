@@ -4,7 +4,7 @@ import pandas as pd
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from vocab_check.functional_check import add_range_and_allowed_flags
+from vocab_check.functional_validator import add_range_and_allowed_flags
 
 
 INPUT_XLSX = "testing/run/testing_files/allowed_test.xlsx"
@@ -33,7 +33,7 @@ def main():
     # --- Excel -> Parquet + row_type ---
     df_raw = excel_to_parquet(
         excel_path=INPUT_XLSX,
-        parquet_path="testing/allowed_test.raw.parquet",
+        parquet_path="testing/run/testing_files/allowed_test.raw.parquet",
         sheet_name=0,
         meta_rows=0,  # no meta rows in this test file
     )

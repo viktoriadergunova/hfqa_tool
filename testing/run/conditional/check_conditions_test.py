@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from validator.conditional_validator import apply_conditional_rules
+from vocab_check.conditional_validator import apply_conditional_rules
 
 
 SCRIPT_DIR = Path(__file__).parent.parent.parent.parent

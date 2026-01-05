@@ -10,8 +10,8 @@ import yaml
 from etl.extract_excel import excel_to_parquet
 from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
-from validator.functional_validator import add_mandatory_flags, add_range_and_allowed_flags
-from validator.conditional_validator import apply_conditional_rules
+from vocab_check.functional_validator import add_mandatory_flags, add_range_and_allowed_flags
+from vocab_check.conditional_validator import apply_conditional_rules
 
 
 def run_validation(
@@ -248,19 +248,36 @@ def run_validation(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, help="Pfad zur Excel-Datei")
-    parser.add_argument("--out", required=True, help="Pfad für JSON-Report")
+    parser.add_argument("--input", required=False, help="Path to input Excel file")
+    parser.add_argument("--out", required=False, help="Path to output JSON report")
     parser.add_argument("--sheet", type=int, default=0, help="Excel sheet index (e.g. 0, 1, ...)")
-    parser.add_argument("--meta-rows", type=int, default=7, help="Anzahl Meta-Zeilen am Tabellenkopf")
+    parser.add_argument("--meta-rows", type=int, default=7, help="Number of meta rows in Excel sheet")
     parser.add_argument(
         "--debug-prefix",
         default=None,
-        help="Prefix für Debug-Parquet-Dateien (ohne Endung); wenn gesetzt, werden _01.._04 geschrieben",
-    )
+        help="Get intermediate Parquet files with this prefix")
+    parser.add_argument("--run-tests", action="store_true", help="Run internal test suites")
+    
 
     args = parser.parse_args()
-
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+    if args.run_tests:
+        logging.info("Starting internal test suites...")
+        
+
+        from testing.run.functional.check_range_flags import main as run_range_tests
+        from testing.run.functional.check_obligation_flags import main as run_ob_tests
+        from testing.run.functional.check_allowed_flags import main as run_allowed_tests
+        from testing.run.conditional.check_conditions_test import main as run_cond_tests
+        
+        # Test functions
+        run_range_tests()
+        run_ob_tests()
+        run_allowed_tests()
+        #run_cond_tests()
+
+        return 
 
     run_validation(
         input_path=args.input,

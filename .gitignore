@@ -14,3 +14,4 @@ env/
 *.parquet
 *.json
 ~$*.xlsx
+.xlsx
