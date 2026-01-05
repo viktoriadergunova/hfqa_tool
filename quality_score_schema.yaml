@@ -1,0 +1,62 @@
+version: "1.0"
+schema_id: "hf_quality:v1"
+# Step A
+# ===== UNCERTAINTY (U-SCORE) =====
+# Based on Coefficient of Variation (COV% = [HFDUncertainty / |HFDValue|] * 100)
+u_score:
+  calculation:
+    value_col: "C1"        # Child HF Value
+    uncertainty_col: "C2" # Child HF Uncertainty
+    site_name_col: "P3"
+    relevance_col: "C9"
+  thresholds:
+    U1: 5.0                # < 5% (Excellent)
+    U2: 15.0               # 5-15% (Good)
+    U3: 25.0               # 15-25% (Acceptable)
+    U4: 100.0              # > 25% (Poor)
+    Ux: "missing"          # Data missing or not applicable
+# Step B
+# ===== METHODOLOGICAL (M-SCORE) =====
+
+m_score:
+  base_value: 1.0
+  thresholds:              # Final score (T_score * TC_score) classification
+    M1: 0.75               # >= 0.75 (Excellent)
+    M2: 0.50               # 0.50 - 0.74 (Good)
+    M3: 0.25               # 0.25 - 0.49 (Acceptable)
+    M4: 0.00               # < 0.25 (Poor)
+    missing_suffix: "x"    # Added if metadata is missing (e.g., M3x)
+
+  # Borehole/Mine Logic (Domain B)
+  borehole_logic:
+    temperature:
+      continuous_log:
+        allowed: ["[LOGeq]", "[CLOG]", "[DTSeq]", "[cDTS]"]
+        bonus: 0.1
+      perturbed:
+        allowed: ["[LOGpert]"]
+        penalty: -0.1
+    conductivity:
+      location_penalty:
+        "[Actual heat-flow location]": 0.0
+        "[Other location]": -0.1
+        "[Literature/unspecified]": -0.2
+#Step C
+# ===== PERTURBATION (P-FLAGS) =====
+# Maps columns C13-C19 to a 7-character string (e.g., "SxxP-Cx")
+p_flags:
+  mapping:
+    "[Present and corrected]": "UPPERCASE"   # e.g., 'S', 'T'
+    "[Present and not corrected]": "lowercase" # e.g., 's', 't'
+    "[Present not significant]": "X"
+    "[not recognized]": "x"
+    "[unspecified]": "-"
+  # Tracking sequence for debugging
+  sequence:
+    1: { name: "Sedimentation", col: "C13", char: "S" }
+    2: { name: "Erosion", col: "C14", char: "E" }
+    3: { name: "Topography", col: "C15", char: "T" }
+    4: { name: "Paleoclimate", col: "C16", char: "P" }
+    5: { name: "Surface_Var", col: "C17", char: "V" }
+    6: { name: "Convection", col: "C18", char: "C" }
+    7: { name: "Refraction", col: "C19", char: "R" }
