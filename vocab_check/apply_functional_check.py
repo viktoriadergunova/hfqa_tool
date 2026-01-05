@@ -108,7 +108,6 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
             allowed_set = {str(a).strip().lower() for a in allowed_norm.dropna()}
 
             # Daten-Seite: ist bereits durch normalize_dataframe gelaufen;
-            # hier zur Sicherheit nochmal strip + lowercase
             s = df[col_name].astype("string").str.strip().str.lower()
 
             # handle multi-choice columns correctly
