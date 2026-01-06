@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from quality_score.helper_functions import norm_vocab
+from etl.normalization import normalize_vocabulary_series  
 
 
 def calculate_u_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
@@ -15,7 +15,8 @@ def calculate_u_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     ROLE_CHILD = u_cfg.get("role_child", "[yes]")
     ROLE_PARENT = u_cfg.get("role_parent", "[no]")
 
-    relevance = norm_vocab(df, rel_col)
+    # FIX: normalize the relevance column as a Series (not a single token)
+    relevance = normalize_vocabulary_series(df[rel_col])
 
     val_num = pd.to_numeric(df[value_col], errors="coerce")
     unc_num = pd.to_numeric(df[uncertainty_col], errors="coerce")
@@ -69,7 +70,9 @@ def inherit_u_score_to_parent(df_child: pd.DataFrame, qc_schema: dict) -> pd.Dat
     rel_col = u_cfg["relevance_col"]
     ROLE_CHILD = u_cfg.get("role_child", "[yes]")
 
-    relevance = norm_vocab(df_child, rel_col)
+    # FIX: normalize the relevance column as a Series (not a single token)
+    relevance = normalize_vocabulary_series(df_child[rel_col])
+
     relevant_df = df_child[relevance == ROLE_CHILD].copy()
 
     if relevant_df.empty:

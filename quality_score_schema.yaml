@@ -1,67 +1,94 @@
 version: "1.0"
 schema_id: "hf_quality:v1"
-# Step A
-# ===== UNCERTAINTY (U-SCORE) =====
-# Based on Coefficient of Variation (COV% = [HFDUncertainty / |HFDValue|] * 100)
+
+# =====================================================
+# STEP A — UNCERTAINTY SCORE (U-SCORE)
+# =====================================================
 u_score:
+
   calculation:
-    value_col: "C1"        # Child HF Value
-    uncertainty_col: "C2" # Child HF Uncertainty
+    value_col: "C1"            # Heat-flow value
+    uncertainty_col: "C2"      # Heat-flow uncertainty
+    site_name_col: "P3"        # Site / borehole identifier
+    relevance_col: "C9"        # Child / Parent flag
+    role_child: "[yes]"
+    role_parent: "[no]"
+
+  thresholds:
+    U1: 5.0                    # < 5%
+    U2: 15.0                   # 5–15%
+    U3: 25.0                   # 15–25%
+    U4: 100.0                  # >25%
+    Ux: "missing"
+
+
+# =====================================================
+# STEP B — METHODOLOGICAL SCORE (M-SCORE)
+# =====================================================
+m_score:
+
+  base_value: 1.0
+
+  # ---------- REQUIRED FOR SCHEMA-DRIVEN CODE ----------
+  calculation:
     site_name_col: "P3"
     relevance_col: "C9"
+    role_child: "[yes]"
+    role_parent: "[no]"
+
+    # Temperature gradient (borehole)
+    t_method_top_col: "C31"
+    t_method_bottom_col: "C32"
+    t_number_col: "C37"
+
+    # Thermal conductivity
+    q_top_col: "C4"
+    q_bottom_col: "C5"
+    tc_location_col: "C42"
+    tc_source_col: "C41"
+    tc_number_col: "C47"
+    tc_saturation_col: "C44"
+    tc_pT_conditions_col: "C45"
+
   thresholds:
-    U1: 5.0                # < 5% (Excellent)
-    U2: 15.0               # 5-15% (Good)
-    U3: 25.0               # 15-25% (Acceptable)
-    U4: 100.0              # > 25% (Poor)
-    Ux: "missing"          # Data missing or not applicable
-# Step B
-# ===== METHODOLOGICAL (M-SCORE) =====
+    M1: 0.75
+    M2: 0.50
+    M3: 0.25
+    M4: 0.00
+    missing_suffix: "x"
 
-m_score:
-  base_value: 1.0
-  thresholds:                    # Final score = T_score * TC_score
-    M1: 0.75                     # >= 0.75
-    M2: 0.50                     # 0.50 - 0.75
-    M3: 0.25                     # 0.25 - 0.50
-    M4: 0.00                     # < 0.25
-    missing_suffix: "x"          # append if any required metadata missing/unspecified
-
+  # =====================================================
+  # Borehole 
+  # =====================================================
   borehole_logic:
 
     # -------------------------
-    # Temperature gradient (T-score) — Borehole/Mine
-    # Relevant DB fields:
-    #   C31 = T_method_top
-    #   C32 = T_method_bottom
-    #   C37 = T_number
-    # (C33/C34/C35/C36 exist but are NOT used in Table 3 scoring)
+    # Temperature gradient (T-score)
     # -------------------------
     temperature:
       start_value: 1.0
 
       cases:
 
-        # Case 1: Continuous T log
-        # Condition: C37 (T_number) > 3
+        # Case 1 — Continuous log (C37 > 3)
         continuous_log:
           when:
             C37_T_number: ">3"
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]  # via C31/C32
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]
               penalty: 0.1
             perturbed:
-              methods_any_of: ["[LOGpert]"]                               # via C31/C32
+              methods_any_of: ["[LOGpert]"]
               penalty: -0.1
 
-        # Case 2: Multiple single T point
+        # Case 2 — Multiple single-point temperatures
         multiple_single_points:
-          when: {}  # default if not continuous_log and not single+surface case
+          when: {}
           rules:
             equilibrium_or_corrected:
               methods_any_of:
-                - "[LOGeq]"     # via C31/C32
+                - "[LOGeq]"
                 - "[cLOG]"
                 - "[DTSeq]"
                 - "[cDTS]"
@@ -82,18 +109,21 @@ m_score:
                 - "[BLK]"
               penalty: -0.3
             estimated:
-              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              methods_any_of:
+                - "[CPD]"
+                - "[XEN]"
+                - "[GTM]"
+                - "[BSR]"
               penalty: -0.5
 
-        # Case 3: One single T point + surface T
-        # Condition: C31 (T_method_top) == [SUR]
+        # Case 3 — One single point + surface temperature
         one_single_point_plus_surface_T:
           when:
             C31_T_method_top: "==[SUR]"
           rules:
             equilibrium_or_corrected:
               methods_any_of:
-                - "[cBHT]"      # via C32 typically; C31 is [SUR]
+                - "[cBHT]"
                 - "[cDST]"
                 - "[RTDeq]"
                 - "[RTDc]"
@@ -101,10 +131,17 @@ m_score:
                 - "[ODTT-TP]"
               penalty: -0.3
             perturbed:
-              methods_any_of: ["[BHT]", "[DST]", "[RTDpert]"]
+              methods_any_of:
+                - "[BHT]"
+                - "[DST]"
+                - "[RTDpert]"
               penalty: -0.5
             estimated:
-              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              methods_any_of:
+                - "[CPD]"
+                - "[XEN]"
+                - "[GTM]"
+                - "[BSR]"
               penalty: -0.6
 
       missing_metadata:
@@ -112,27 +149,21 @@ m_score:
         rule: "apply_max_penalty_for_unresolvable_case_and_flag_x"
 
     # -------------------------
-    # Thermal conductivity (TC-score) — Borehole/Mine
-    # Relevant DB fields:
-    #   Gate: C04 = q_top, C05 = q_bottom  (interval depth reported?)
-    #   C42 = tc_location
-    #   C41 = tc_source
-    #   C47 = tc_number
-    #   C44 = tc_saturation
-    #   C45 = tc_pT_conditions
+    # Thermal conductivity (TC-score)
     # -------------------------
     conductivity:
       start_value: 1.0
 
+      # ---------- TC GATE ----------
       gate_interval_depth_reported:
-        required_C_fields: ["C04", "C05"]         # q_top, q_bottom
+        required_C_fields: ["C4", "C5"]
         if_missing:
           tc_score_fixed: 0.1
           stop_scoring: true
 
       blocks:
 
-        # Block 1: Localization (C42)
+        # Block 1 — Localization
         location:
           C_field: "C42"
           mapping:
@@ -140,7 +171,7 @@ m_score:
             "[Other location]": -0.1
             "[Literature/unspecified]": -0.2
 
-        # Block 2: Source type (C41)
+        # Block 2 — Source type
         source_type:
           C_field: "C41"
           mapping:
@@ -153,7 +184,7 @@ m_score:
             "[Mineral computation]": -0.2
             "[Assumed from literature]": -0.2
 
-        # Block 3: Number of conductivities (C47), only if C42 != [Literature/unspecified]
+        # Block 3 — Number of conductivities
         number_of_conductivities:
           C_field: "C47"
           apply_only_if:
@@ -163,7 +194,7 @@ m_score:
             "1-15": -0.1
             "unspecified_or_missing": -0.1
 
-        # Block 4: Saturation (C44)
+        # Block 4 — Saturation
         saturation:
           C_field: "C44"
           mapping:
@@ -173,7 +204,7 @@ m_score:
             "[Recovered]": -0.1
             "[Dry measured]": -0.2
 
-        # Block 5: pT conditions (C45)
+        # Block 5 — pT conditions
         pT_conditions:
           C_field: "C45"
           mapping:
@@ -189,5 +220,10 @@ m_score:
             "[Unspecified]": -0.2
 
       missing_metadata:
-        required_C_fields_after_gate: ["C42", "C41", "C47", "C44", "C45"]
+        required_C_fields_after_gate:
+          - "C42"
+          - "C41"
+          - "C47"
+          - "C44"
+          - "C45"
         rule: "apply_max_penalty_per_missing_block_and_flag_x"

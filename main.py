@@ -12,7 +12,8 @@ from etl.normalization import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
 from vocab_check.apply_functional_check import add_mandatory_flags, add_range_and_allowed_flags
 from vocab_check.apply_conditional_check import apply_conditional_rules
-from quality_score.apply_quality_score import calculate_u_score, inherit_u_score_to_parent
+from quality_score.apply_u_quality_score import calculate_u_score, inherit_u_score_to_parent
+from quality_score.apply_m_quality_score import calculate_m_score
 
 
 def run_pipeline(
@@ -339,6 +340,7 @@ def main():
         from testing.run.functional.check_allowed_flags import main as run_allowed_tests
         from testing.run.conditional.check_conditions_test import main as run_cond_tests
         from testing.run.quality_score.check_u1_score import main as run_u_score_tests
+        from testing.run.quality_score.check_m1_score import main as run_m_score_tests
         
         # Test functions
         run_range_tests()
@@ -346,6 +348,8 @@ def main():
         run_allowed_tests()
         #run_cond_tests()
         run_u_score_tests()
+        run_m_score_tests()
+
 
         return 
 

@@ -1,11 +1,13 @@
 import pandas as pd
+from etl.normalization import normalize_vocabulary_series
 from quality_score.helper_functions import (
     norm_vocab, as_num, is_missing_token,
-    any_method_matches, worst_penalty_from_rules
+    any_method_matches, worst_penalty_from_rules, normalize_qc_schema_for_m_score
 )
 
 
 def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
+    qc_schema = normalize_qc_schema_for_m_score(qc_schema)
     m_cfg = qc_schema["m_score"]
     calc = m_cfg["calculation"]
     thr = m_cfg["thresholds"]
@@ -16,9 +18,8 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     ROLE_CHILD = calc.get("role_child", "[yes]")
     ROLE_PARENT = calc.get("role_parent", "[no]")
 
-    relevance = norm_vocab(df, rel_col)
+    relevance = normalize_vocabulary_series(df[rel_col])
 
-    # mapped columns
     col_T_top = calc["t_method_top_col"]
     col_T_bot = calc["t_method_bottom_col"]
     col_T_n = calc["t_number_col"]
@@ -31,19 +32,18 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     col_tc_sat = calc["tc_saturation_col"]
     col_tc_pt = calc["tc_pT_conditions_col"]
 
-    # normalized series
-    T_top = norm_vocab(df, col_T_top)
-    T_bot = norm_vocab(df, col_T_bot)
+    T_top = normalize_vocabulary_series(df[col_T_top])
+    T_bot = normalize_vocabulary_series(df[col_T_bot])
     T_n = as_num(df[col_T_n])
 
     q_top = as_num(df[col_q_top])
     q_bot = as_num(df[col_q_bot])
 
-    tc_loc = norm_vocab(df, col_tc_loc)
-    tc_src = norm_vocab(df, col_tc_src)
+    tc_loc = normalize_vocabulary_series(df[col_tc_loc])
+    tc_src = normalize_vocabulary_series(df[col_tc_src])
     tc_n = as_num(df[col_tc_n])
-    tc_sat = norm_vocab(df, col_tc_sat)
-    tc_pt = norm_vocab(df, col_tc_pt)
+    tc_sat = normalize_vocabulary_series(df[col_tc_sat])
+    tc_pt = normalize_vocabulary_series(df[col_tc_pt])
 
     bh = m_cfg["borehole_logic"]
     t_logic = bh["temperature"]
@@ -73,7 +73,8 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     sat_map = blocks["saturation"]["mapping"]
     pt_map = blocks["pT_conditions"]["mapping"]
 
-    lit_token = "[Literature/unspecified]"
+    lit_token = norm_vocab("[Literature/unspecified]")
+    sur_token = norm_vocab("[SUR]")
 
     def classify(raw: float) -> str:
         if pd.isna(raw):
@@ -99,7 +100,6 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
 
         missing = False
 
-        # T-score
         T_score = float(t_logic.get("start_value", 1.0))
         top = T_top.loc[i]
         bot = T_bot.loc[i]
@@ -108,7 +108,7 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         if is_missing_token(top) or is_missing_token(bot) or pd.isna(nT):
             missing = True
 
-        if top == "[SUR]":
+        if top == sur_token:
             applied = False
             for rule in single_rules.values():
                 if bot in rule["methods_any_of"]:
@@ -140,7 +140,6 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
                 T_score += multi_worst
                 missing = True
 
-        # TC-score
         TC_score = float(tc_logic.get("start_value", 1.0))
         if pd.isna(q_top.loc[i]) or pd.isna(q_bot.loc[i]):
             TC_score = gate_fixed
@@ -191,7 +190,6 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         out_rank.loc[i] = rank_map[base]
         out_has_x.loc[i] = missing
 
-    # inherit to parent: poorest child per site
     site_to_parent_label = {}
     child_mask = (relevance == ROLE_CHILD)
     if child_mask.any():
