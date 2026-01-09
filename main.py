@@ -16,6 +16,65 @@ from quality_score.apply_u_quality_score import calculate_u_score, inherit_u_sco
 from quality_score.apply_m_quality_score import calculate_m_score
 
 
+def generate_validation_comments(df_checked: pd.DataFrame, schema: dict, first_data_index: int) -> pd.DataFrame:
+    """
+    Generate a validation comments column for each row in the dataframe.
+    Returns a DataFrame with original data + 'Validation_Comments' column.
+    """
+    # Get original columns (without flag columns)
+    original_cols = [col for col in df_checked.columns if "__" not in col]
+    df_result = df_checked[original_cols].copy()
+    
+    def get_col_comment(schema_dict: dict, col_name: str) -> str:
+        for section in ("columns", "core"):
+            section_dict = schema_dict.get(section, {})
+            if col_name in section_dict:
+                return section_dict[col_name].get("comment", "")
+        return ""
+    
+    # Create validation comments for each row
+    validation_comments = []
+    
+    for idx in df_checked.index:
+        row_comments = []
+        
+        # Check all flag columns for this row
+        for col in df_checked.columns:
+            if "__" not in col:
+                continue
+            
+            if df_checked.loc[idx, col] == True:
+                col_name, flag_type = col.split("__", 1)
+                col_description = get_col_comment(schema, col_name)
+                
+                # Format the error message based on flag type
+                if flag_type == "missing":
+                    error_msg = f"[MISSING] {col_name} ({col_description}): Required field is empty"
+                elif flag_type == "out_of_range":
+                    value = df_checked.loc[idx, col_name]
+                    error_msg = f"[RANGE ERROR] {col_name} ({col_description}): Value '{value}' is out of allowed range"
+                elif flag_type == "invalid":
+                    value = df_checked.loc[idx, col_name]
+                    error_msg = f"[INVALID VALUE] {col_name} ({col_description}): Value '{value}' is not in allowed list"
+                elif flag_type.startswith("cond_"):
+                    value = df_checked.loc[idx, col_name]
+                    error_msg = f"[CONDITIONAL ERROR] {col_name} ({col_description}): Conditional rule '{flag_type}' violated"
+                else:
+                    error_msg = f"[ERROR] {col_name} ({col_description}): {flag_type}"
+                
+                row_comments.append(error_msg)
+        
+        # Join all comments for this row with separator
+        if row_comments:
+            validation_comments.append(" | ".join(row_comments))
+        else:
+            validation_comments.append("OK")
+    
+    df_result['Validation_Comments'] = validation_comments
+    
+    return df_result
+
+
 def run_pipeline(
     input_path: str,
     out_report: str,
@@ -23,6 +82,7 @@ def run_pipeline(
     sheet_name: int = 0,
     meta_rows: int = 7,
     debug_prefix: str | None = None,
+    out_excel: str | None = None,
 ) -> None:
     start_time = time.time()
 
@@ -101,6 +161,10 @@ def run_pipeline(
     # Report + Statistik
     # -------------------------------------------------------------
 
+        # Calculate row offset including meta rows
+        # meta_rows are at the top, so data rows start after them
+        row_offset = meta_rows + 1  # +1 for Excel header row
+        
         if len(df_checked.index) > 0:
             first_data_index = int(df_checked.index.min())
         else:
@@ -170,13 +234,13 @@ def run_pipeline(
             data_row_numbers = []
 
             for idx in bad_indices:
-                data_row = int((idx - first_data_index) + 1)
-                data_row_numbers.append(data_row)
+                # Excel row = meta_rows + header + data_row_position
+                excel_row = row_offset + (idx - first_data_index)
                 site_name = str(df_checked.at[idx, 'P3']) if 'P3' in df_checked.columns else "N/A"
 
                 logging.info(
-                    "row=%d col=%s flag=%s comment=%s",
-                    data_row,
+                    "row=%d col=%s flag=%s site=%s comment=%s",
+                    excel_row,
                     col_name,
                     flag_type,
                     site_name,
@@ -185,7 +249,7 @@ def run_pipeline(
 
                 violations.append(
                     {
-                        "row_data_number": data_row,
+                        "row_excel_number": excel_row,
                         "column": col_name,
                         "site_name": site_name, 
                         "flag": flag_type,
@@ -193,11 +257,11 @@ def run_pipeline(
                     }
                 )
 
-                rows_any_error.add(data_row)
+                rows_any_error.add(excel_row)
                 if is_conditional:
-                    rows_conditional_error.add(data_row)
+                    rows_conditional_error.add(excel_row)
                 else:
-                    rows_functional_error.add(data_row)
+                    rows_functional_error.add(excel_row)
 
             problems_grouped.append(
                 {
@@ -248,6 +312,37 @@ def run_pipeline(
         logging.info("Conditional errors (cell count): %d", conditional_error_count)
         logging.info("Processing time: %.2f seconds", runtime_sec)
 
+        # -------------------------------------------------------------
+        # Generate Excel output with validation comments
+        # -------------------------------------------------------------
+        if out_excel:
+            logging.info("Generating Excel output with validation comments...")
+            
+            # Generate validation comments for data rows
+            df_with_comments = generate_validation_comments(df_checked, schema, first_data_index)
+            
+            # Combine meta rows (if any) with data rows
+            if df_meta is not None and len(df_meta) > 0:
+                # Add empty validation comment column to meta rows
+                df_meta['Validation_Comments'] = 'META ROW'
+                
+                # Ensure both dataframes have the same columns in the same order
+                all_cols = df_with_comments.columns.tolist()
+                for col in all_cols:
+                    if col not in df_meta.columns:
+                        df_meta[col] = pd.NA
+                
+                df_meta = df_meta[all_cols]
+                df_final = pd.concat([df_meta, df_with_comments], ignore_index=False).sort_index()
+            else:
+                df_final = df_with_comments
+            
+            # Write to Excel
+            logging.info(f"Writing Excel file: {out_excel}")
+            df_final.to_excel(out_excel, index=False, sheet_name='Validation Results')
+            logging.info(f"Excel file created successfully: {out_excel}")
+
+        # Write JSON report
         logging.info("writing JSON report: %s", out_report)
         with open(out_report, "w", encoding="utf-8") as f:
             json.dump(
@@ -313,7 +408,8 @@ def run_pipeline(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=False, help="Path to input Excel file")
-    parser.add_argument("--out", required=False, help="Path to output JSON report")
+    parser.add_argument("--out-json", required=False, help="Path to output JSON report")
+    parser.add_argument("--out-excel", required=False, help="Path to output Excel file with validation comments")
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument("--vocab-check", action="store_true", help="Run vocabulary validation")
     mode_group.add_argument("--quality-score", action="store_true", help="Run U, M, P quality scoring")
@@ -360,6 +456,7 @@ def main():
         sheet_name=args.sheet,
         meta_rows=args.meta_rows,
         debug_prefix=args.debug_prefix,
+        out_excel=args.out_excel,
     )
 
 
