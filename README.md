@@ -3,14 +3,15 @@
 
 ## Table of contents 
 - [Overview](#overview)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Vocabulary Validation](#vocabulary-validation)
+- [Quality Scoring](#quality-scoring)
 - [Documentation](#documentation)
-- [System Requirements](#system-requirements)
-- [Installation Guide](#installation-guide)
-- [Running code](#running-code)
-- [Setting up the development environment](#setting-up-the-development-environment)
-- [Precaution](#precaution)
+- [Contributing](#contributing)
+- [Citation](#citation)
 - [License](#license)
-- [Issues](ISSUES.md)
+
 
 ## Overview
 
@@ -18,126 +19,228 @@
 
 `Quality Score` calculates U-scores (uncertainty quantification, U1-U4), M-scores (methodology assessment based on measurement techniques, M1-M4), and P-flags (perturbations effect such as topographic, paleoclimatic etc. )
 
-# Documentation
-The list of Co-Authors involved in developing this toolbox are mentioned in [AUTHORs.md](https://github.com/sfchishti/hfqa_tool/blob/main/AUTHORs.md)
 
-Chishti, Saman F.; Balkan-Pazvantoğlu, Elif; Norden, Ben; Neumann, Florian; Elbarbary, Samah; Gross, Eskil S.; Petrunin, Alexey G.; Fuchs, Sven (2025): Heat Flow Quality Analysis Toolbox (hfqa_tool). GFZ Data Services. [doi:10.5880/fidgeo.2025.043](https://doi.org/10.5880/fidgeo.2025.043)
+## Installation:
 
-# System Requirements
-## Hardware requirements
-`hfqa_tool` package requires only a standard computer with enough RAM to support the in-memory operations.
-For multiprocessing you would need more than 2 cores.
-
-## Software requirements
-### OS Requirements
-This package is supported for *Windows*, *macOS* and *Linux*. The package has been tested on the following systems:
-+ Windows: Windows 10 Pro
-+ Linux: Ubuntu 
-
-### Python Dependencies
-`hfqa_tool` mainly depends on the Python scientific computing and file handling stack.
-
-```
-numpy>=1.18.0
-pandas>=1.0.0
-openpyxl>=3.0.0
-math
-datetime
-glob
-os
-warnings
-multiprocessing
-tqdm
-
-# 'glob', 'os', 'warnings', 'datetime', 're' and 'math' are part of the standard library
-```
-
-# Installation Guide:
-
-### Install from Github
-In shell, cmd, VSCode or any other console of your liking enter:
-```
-git clone https://github.com/sfchishti/hfqa_tool.git
-```
-```
-cd hfqa_tool
-```
-```
-python setup.py install --user
-```
-- `sudo`, if required
-- `python3 setup.py build_ext --inplace  # for cython`, if you want to test in-place, first execute this
-
-# Running code
-## Option 1: 
-### Cloning .git with Multiprocessing
-- Follow steps from [Install from Github](#install-from-github).
-- Run `python` in shell
-   ```
-  from hfqa_tool import main
-  main()
-  ```
-- When prompted with `Please enter the file directory:`, provide the directory/location of your Heatflow data files.
-- If running on Linux or Mac OS, use forward slashes /. On Windows, backward slashes \ will work fine when assigning your directory.
-- Get results in the same folder with execution time displayed :)
-
-## Option 2: 
-### Directly without Multiprocessing
-- Download `hfqa_tool` repository
-- Run all sections of the code of notebooks on conda environment. Descriptions and guidelines are provided with the code.
-- When prompted with `Please enter the file directory:`, provide the directory/location of your Heatflow data files. This can be done in the last section (*10. hfqa_tool function*) of the code, both in [Vocabulary_check](https://github.com/sfchishti/hfqa_tool/blob/main/notebooks/Vocabulary_check.ipynb), and [Combined_score](https://github.com/sfchishti/hfqa_tool/blob/main/notebooks/Combined_score.ipynb) code.
-- If running on Linux or Mac OS, use forward slashes /. On Windows, backward slashes \ will work fine when assigning your directory.
-- Get results in the same folder :)
-
-# Setting up the development environment:
 ### Prerequisites
+- Python 3.8 or higher
+- pip, conda package manager
 
-Make sure you have the following installed:
+### Install from Github 
 
-- [Python](https://www.python.org/) 3.x (Ensure you have the correct version)
-- [pip](https://pip.pypa.io/en/stable/) (Python package installer)
-- [virtualenv](https://virtualenv.pypa.io/en/stable/) (Optional but recommended)
-- Git
-
-### Cloning the Repository
-
-Clone the project repository using Git:
-
-```
+```bash
 git clone https://github.com/sfchishti/hfqa_tool.git
 cd hfqa_tool
+pip install -r requirements.txt # install dependencies
+```
+### Dependencies
+
+```
+pandas>=2.0
+pyarrow
+openpyxl
+pyyaml
 ```
 
-### Select branch
+## Quick Start 
+### Vocabulary Validation
+Validate your heat flow data against IHFC standards:
+
+```bash
+python main.py --vocab-check \
+  --input your_data.xlsx \
+  --out-json validation_report.json \
+  --out-excel validated_data.xlsx \
+  --meta-rows 7
+```
+**Parameters:**
+- `--vocab-check`: Run vocabulary validation mode
+- `--input`: Path to your Excel file
+- `--out-json`: Output path for JSON validation report
+- `--out-excel`: Output path for Excel file with validation comments
+- `--meta-rows`: Number of metadata rows at the top of your Excel sheet (default: 7)
+- `--sheet`: Sheet index to validate (default: 0)
+
+## Ouality Score 
+
+### Understanding the Output 
+#### JSON Report Structure
+```json
+{
+  "violations": [
+    {
+      "row_excel_number": 8,
+      "column": "P2",
+      "site_name": "[Site-001]",
+      "flag": "missing",
+      "comment": "HF Uncertainty"
+    }
+  ],
+  "summary": {
+    "total_rows_in_sheet": 1000,
+    "data_rows_validated": 993,
+    "rows_with_any_error": 45,
+    "functional_error_count": 78,
+    "conditional_error_count": 12,
+    "runtime_seconds": 2.34
+  }
+}
+```
+#### Excel Output
+The Excel file contains all original data plus a **Validation_Comments** column with detailed error descriptions:
+
+| ... | P1 | P2 | P3 | Validation_Comments |
+|-----|----|----|----|--------------------|
+| ... | 65.5 | | Site-001 | [MISSING] P2 (HF Uncertainty): Required field is empty |
+| ... | 72.3 | 5.2 | Site-002 |  |
+
+## Vocabulary Validation
+
+### Validation Types
+
+#### 1. Functional Validation
+Basic data quality checks performed on all data:
+
+**Missing Value Checks**
+- Validates that all mandatory (M) fields contain values
+- Example: `P2` (HF Uncertainty) must not be empty
+
+**Range Validation**
+- Ensures numeric values fall within acceptable bounds
+- Example: Latitude (`P4`) must be between -90.0 and 90.0
+
+**Allowed Value Validation**
+- Checks that values match controlled vocabularies
+- Example: `P7` (Location Type) must be one of `[Onshore (continental)]`, `[Offshore (marine)]`, etc.
+
+#### 2. Conditional Validation
+Context-dependent rules based on other field values:
+
+**Method-Specific Requirements**
+- If exploration method (`P12`) is `[Probing (...)]`, then probe tilt (`C23`) is mandatory
+- If thermal conductivity measurement type is specified, corresponding method columns must be valid
+
+**Cross-Field Logic**
+- Temperature measurement method restrictions based on measurement count
+- Thermal conductivity source restrictions based on location type
+
+### Data Preparation
+
+Your Excel file must follow offical GHFDB structure:
 
 ```
-git checkout contribute
+Row 1-7:   Metadata rows (configurable)
+Row 8:     Column headers (ID, Level, Obligation, P1, P2, P3, ...)
+Row 9+:    Data rows
 ```
-You're now on development mode. Make sure to make proper commit message and 
-check your credentials as committer. For example:
-```
-git commit -m "Vocab_check.ipynb:your_commit"
-```
-To configue yourself as committer try:
-```
-git config user.name "Your_name"
-git config user.email "your_email@example.com"
-```
-```
-git push
+### Error Categories
+
+| Category | Flag Suffix | Description | Example |
+|----------|-------------|-------------|---------|
+| Missing | `__missing` | Required field is empty | `P2__missing` |
+| Range | `__out_of_range` | Value outside valid range | `P4__out_of_range` |
+| Invalid | `__invalid` | Value not in vocabulary | `P7__invalid` |
+| Conditional | `__cond_*` | Context-dependent rule violated | `C23__cond_probing_requires_c23` |
+
+## Quality Scoring
+TO BE CONTINUED
+
+
+## Documentation
+
+### Schema Files
+
+The validation behavior is defined in YAML schema files:
+
+- **`hf_schema.yaml`**: Main data structure and functional validation rules
+- **`conditional_rules.yaml`**: Context-dependent validation logic
+- **`quality_score_schema.yaml`**: Quality score calculation rules
+
+### Column Reference
+
+Full documentation of all data fields is available in the schema files. Key field groups:
+
+**Parent Level (P1-P13)**: Site-level information
+- Location coordinates, elevation, exploration method, etc.
+
+**Child Level (C1-C49)**: Determination-level information
+- Heat flow value, uncertainty, measurement methods, thermal conductivity, etc.
+
+**Admin Level (A1-A8)**: Administrative metadata
+- Reviewer information, geographic classification, etc.
+
+## Testing
+
+Run the built-in test suite to verify functionality:
+
+```bash
+python main.py --run-tests
 ```
 
-    
-# Precaution
-- The worksheet of Heat flow data must be named "data list", to execute conversion of the data set in machine readable format (here, *.csv*). Else the function `convert2UTF8csv(folder_path)` will not work.
-![data_list Image](notebooks/Graphics/data_list.png)
-- When a new data release occurs and the relevancy (indicated by *'Obligation'*) of a column in the HF data structure is updated, make sure to place the data structure files with the updated column relevancy into separate folders before running the code.
+This executes:
+- Range validation tests
+- Obligation/mandatory field tests
+- Allowed value tests
+- Conditional rule tests
+- U-score calculation tests
+- M-score calculation tests
+- P-score calculation tests
 
-# License
-**Copyright © <2025> Chishti, S.F., Balkan-Pazvantoğlu, E., Norden, B.; Neumann, F., Elbarbary, S., Gross, E.S., Petrunin, A.G., Fuchs, S. GFZ Helmholtz Centre for Geosciences**
+## Contributing
 
-This work is licensed under multiple licenses:
+We welcome contributions! Please see [ISSUE.md](ISSUE.md) 
 
-- The source codes are licensed under **[MIT](license/MIT.txt)**.
-- The documentation and the images are licensed under **[CC-BY-4.0](license/CC-BY-4.0.txt)**.
+## Citation 
 
+If you use this tool in your research, please cite:
+
+```bibtex
+@software{chishti2025hfqa,
+  author = {Chishti, Saman F. and Balkan-Pazvantoğlu, Elif and Norden, Ben and 
+            Neumann, Florian and Elbarbary, Samah and Gross, Eskil S. and 
+            Petrunin, Alexey G. and Fuchs, Sven},
+  title = {Heat Flow Quality Analysis Toolbox (hfqa_tool)},
+  year = {2025},
+  publisher = {GFZ Data Services},
+  doi = {10.5880/fidgeo.2025.043},
+  url = {https://doi.org/10.5880/fidgeo.2025.043}
+}
+```
+
+**Reference paper:**
+```bibtex
+@article{fuchs2023quality,
+  title = {Quality-assurance of heat-flow data: The new structure and evaluation 
+           scheme of the IHFC Global Heat Flow Database},
+  author = {Fuchs, Sven and others},
+  journal = {Tectonophysics},
+  volume = {863},
+  pages = {229976},
+  year = {2023},
+  doi = {10.1016/j.tecto.2023.229976}
+}
+```
+
+## Authors
+
+- Viktoria Dergunova (GFZ) 
+- Saman Firdaus Chishti (GFZ / University of Potsdam)
+- Ben Norden (GFZ)
+- Florian Neumann (MARUM, University of Bremen)
+- Samah Elbarbary (GFZ)
+- Eskil Salis Gross (GFZ)
+- Alexey G. Petrunin (GFZ)
+- Sven Fuchs (GFZ)
+
+See [AUTHORs.md](AUTHORs.md) for detailed affiliations and contributions.
+
+## License
+
+This project is dual-licensed:
+
+- **Source code**: [MIT License](license/MIT.txt)
+- **Documentation and images**: [CC-BY-4.0](license/CC-BY-4.0.txt)
+
+---
+
+**Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
