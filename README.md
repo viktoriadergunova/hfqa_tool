@@ -41,10 +41,18 @@ pyarrow
 openpyxl
 pyyaml
 ```
+### Data Preparation
 
-## Quick Start 
-### Vocabulary Validation
-Validate your heat flow data against IHFC standards:
+Your Excel file must follow offical GHFDB structure: #TODO add image
+
+```
+Row 1-7:   Metadata rows (configurable)
+Row 8:     Column headers (ID, Level, Obligation, P1, P2, P3, ...)
+Row 9+:    Data rows
+```
+
+
+## Quick Start - Vocabulary Validation
 
 ```bash
 python main.py --vocab-check \
@@ -60,8 +68,6 @@ python main.py --vocab-check \
 - `--out-excel`: Output path for Excel file with validation comments
 - `--meta-rows`: Number of metadata rows at the top of your Excel sheet (default: 7)
 - `--sheet`: Sheet index to validate (default: 0)
-
-## Ouality Score 
 
 ### Understanding the Output 
 #### JSON Report Structure
@@ -100,7 +106,6 @@ The Excel output file contains all original input data and two additional column
 | … | 65.5 |    | Site-001 | data | `[MISSING] C47 (Thermal conductivity number): Required field is empty; [INVALID VALUE] C26 (Stratigraphy): Value 'late paleozoic orogeny' is not in allowed list` |
 | … | 72.3 | 5.2 | Site-002 | data |  |
 
-## Vocabulary Validation
 
 ### Validation Types
 
@@ -130,15 +135,6 @@ Context-dependent rules based on other field values:
 - Temperature measurement method restrictions based on measurement count
 - Thermal conductivity source restrictions based on location type
 
-### Data Preparation
-
-Your Excel file must follow offical GHFDB structure:
-
-```
-Row 1-7:   Metadata rows (configurable)
-Row 8:     Column headers (ID, Level, Obligation, P1, P2, P3, ...)
-Row 9+:    Data rows
-```
 ### Error Categories
 
 | Category | Flag Suffix | Description | Example |
@@ -147,6 +143,9 @@ Row 9+:    Data rows
 | Range | `__out_of_range` | Value outside valid range | `P4__out_of_range` |
 | Invalid | `__invalid` | Value not in vocabulary | `P7__invalid` |
 | Conditional | `__cond_*` | Context-dependent rule violated | `C23__cond_probing_requires_c23` |
+
+
+
 
 ## Quality Scoring
 TO BE CONTINUED
@@ -250,5 +249,6 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
