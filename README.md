@@ -86,13 +86,19 @@ python main.py --vocab-check \
   }
 }
 ```
-#### Excel Output
-The Excel file contains all original data plus a **Validation_Comments** column with detailed error descriptions:
+## Excel Output
 
-| ... | P1 | P2 | P3 | Validation_Comments |
-|-----|----|----|----|--------------------|
-| ... | 65.5 | | Site-001 | [MISSING] P2 (HF Uncertainty): Required field is empty |
-| ... | 72.3 | 5.2 | Site-002 |  |
+The Excel output file contains all original input data and two additional columns that describe validation results and row classification:
+
+- **`row_type`** – indicates whether the row represents metadata or data
+- **`validation_comments`** – contains column dependent error descriptions
+- Rows without validation issues have an empty `validation_comments` field.
+
+
+| … | P1 | P2 | P3 | row_type | validation_comments |
+|---|----|----|----|----------|---------------------|
+| … | 65.5 |    | Site-001 | data | `[MISSING] C47 (Thermal conductivity number): Required field is empty; [INVALID VALUE] C26 (Stratigraphy): Value 'late paleozoic orogeny' is not in allowed list` |
+| … | 72.3 | 5.2 | Site-002 | data |  |
 
 ## Vocabulary Validation
 
@@ -244,4 +250,5 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
