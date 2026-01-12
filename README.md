@@ -1,5 +1,7 @@
-# hfqa_tool
+# Heat Flow Quality Analysis Tool (hfqa_tool)
+`hfqa_tool` is a Python package for validating heat-flow data against the IHFC Global Heat Flow Database (GHFDB) schema and assessing data quality according to International Heat Flow Commission standards, including quality scoring based on the methodology described in doi:10.1016/j.tecto.2023.229976.
 
+## Table of contents 
 - [Overview](#overview)
 - [Documentation](#documentation)
 - [System Requirements](#system-requirements)
@@ -10,14 +12,11 @@
 - [License](#license)
 - [Issues](ISSUES.md)
 
-# Overview
+## Overview
 
-**Heat Flow Quality Analysis Toolbox** `hfqa_tool` is a Python package containing tools for validating and evaluating the quality of heat flow data. It is designed for researchers and professionals. `hfqa_tool` simplifies heat flow data analysis by providing standardized and reproducible quality checks. This is developed in compliance with the paper by Fuchs et al. (2023) titled "[Quality-assurance of heat-flow data: The new structure and evaluation scheme of the IHFC Global Heat Flow Database](https://doi.org/10.1016/j.tecto.2023.229976)," published in Tectonophysics 863: 229976. Also revised for the newer release 2024. There are mainly 2 functions defined in this tool with description as follows:
+`Vocabulary Validation` ensures that data entries comply with the GHFDB database schema by verifying required fields, value ranges, allowed vocabularies, multi-value fields, conditional rules, and by reporting, field-specific errors.
 
-- `vocabulary_check()`: This set of code has been developed to check whether all the values entered in a Heatflow database adhere to a controlled vocabulary and proper structure described in the aforementioned scientific paper. It generates an error message for each entry where the value entered is out of bounds and does not meet the assigned criteria. The code also enables checking the vocabulary for multiple values entered in a single column for a particular Heatflow data entry.
-It's a recommended prerequisite before calculating 'Quality Scores' for a given Heatflow dataset.
-
-- `quality_scores()`: This code has been developed to assess the quality of the Heatflow database in terms of U-score (Uncertainty quantification), M-Score (Methodological quality), and P-Flags (Perturbation effects) adhering to the data structure described in the aforementioned scientific paper.
+`Quality Score` calculates U-scores (uncertainty quantification, U1-U4), M-scores (methodology assessment based on measurement techniques, M1-M4), and P-flags (perturbations effect such as topographic, paleoclimatic etc. )
 
 # Documentation
 The list of Co-Authors involved in developing this toolbox are mentioned in [AUTHORs.md](https://github.com/sfchishti/hfqa_tool/blob/main/AUTHORs.md)
@@ -141,3 +140,4 @@ This work is licensed under multiple licenses:
 
 - The source codes are licensed under **[MIT](license/MIT.txt)**.
 - The documentation and the images are licensed under **[CC-BY-4.0](license/CC-BY-4.0.txt)**.
+
