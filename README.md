@@ -29,7 +29,7 @@
 ### Install from Github 
 
 ```bash
-git clone https://github.com/sfchishti/hfqa_tool.git
+git clone https://github.com/viktoriadergunova/hfqa_tool.git
 cd hfqa_tool
 pip install -r requirements.txt # install dependencies
 ```
@@ -188,7 +188,7 @@ This executes:
 
 ## Contributing
 
-We welcome contributions! Please see [ISSUE.md](ISSUE.md) 
+We welcome contributions! Please see [ISSUEs.md](ISSUEs.md) 
 
 ## Citation 
 
@@ -244,3 +244,4 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
