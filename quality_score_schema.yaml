@@ -31,6 +31,7 @@ m_score:
 
   # ---------- REQUIRED FOR SCHEMA-DRIVEN CODE ----------
   calculation:
+    # Parent / Child identification
     site_name_col: "P3"
     relevance_col: "C9"
     role_child: "[yes]"
@@ -39,7 +40,7 @@ m_score:
     # Temperature gradient (borehole)
     t_method_top_col: "C31"
     t_method_bottom_col: "C32"
-    t_number_col: "C37"
+    t_number_col: "C37" # conditions  t_number_col>3
 
     # Thermal conductivity
     q_top_col: "C4"
@@ -83,37 +84,17 @@ m_score:
               penalty: -0.1
 
         # Case 2 — Multiple single-point temperatures
-        multiple_single_points:
-          when: {}
+        multiple_single_T_points:
+          when: {} # no condition
           rules:
             equilibrium_or_corrected:
-              methods_any_of:
-                - "[LOGeq]"
-                - "[cLOG]"
-                - "[DTSeq]"
-                - "[cDTS]"
-                - "[BHT]"
-                - "[DST]"
-                - "[RTDeq]"
-                - "[RTDc]"
-                - "[ODTT-PC]"
-                - "[ODTT-TP]"
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[BHT]", "[DST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"]
               penalty: -0.1
             perturbed:
-              methods_any_of:
-                - "[LOGpert]"
-                - "[DTSpert]"
-                - "[BHT]"
-                - "[DST]"
-                - "[RTDpert]"
-                - "[BLK]"
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DST]", "[RTDpert]", "[BLK]"]
               penalty: -0.3
             estimated:
-              methods_any_of:
-                - "[CPD]"
-                - "[XEN]"
-                - "[GTM]"
-                - "[BSR]"
+              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
               penalty: -0.5
 
         # Case 3 — One single point + surface temperature
@@ -122,26 +103,13 @@ m_score:
             C31_T_method_top: "==[SUR]"
           rules:
             equilibrium_or_corrected:
-              methods_any_of:
-                - "[cBHT]"
-                - "[cDST]"
-                - "[RTDeq]"
-                - "[RTDc]"
-                - "[ODTT-PC]"
-                - "[ODTT-TP]"
+              C32_methods_any_of: ["[cBHT]", "[cDST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"] # TODO make sure c32 is only used 
               penalty: -0.3
             perturbed:
-              methods_any_of:
-                - "[BHT]"
-                - "[DST]"
-                - "[RTDpert]"
+              C32_methods_any_of: ["[BHT]", "[DST]", "[RTDpert]"]
               penalty: -0.5
             estimated:
-              methods_any_of:
-                - "[CPD]"
-                - "[XEN]"
-                - "[GTM]"
-                - "[BSR]"
+              C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
               penalty: -0.6
 
       missing_metadata:
