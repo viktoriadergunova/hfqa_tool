@@ -49,16 +49,16 @@ def generate_validation_comments(df_checked: pd.DataFrame, schema: dict, first_d
                 
                 # Format the error message based on flag type
                 if flag_type == "missing":
-                    error_msg = f"[MISSING] {col_name} ({col_description}): Required field is empty"
+                    error_msg = f"[MISSING] {col_name} ({col_description})"
                 elif flag_type == "out_of_range":
                     value = df_checked.loc[idx, col_name]
-                    error_msg = f"[RANGE ERROR] {col_name} ({col_description}): Value '{value}' is out of allowed range"
+                    error_msg = f"[RANGE ERROR] {col_name} ({col_description})"
                 elif flag_type == "invalid":
                     value = df_checked.loc[idx, col_name]
-                    error_msg = f"[INVALID VALUE] {col_name} ({col_description}): Value '{value}' is not in allowed list"
+                    error_msg = f"[INVALID VALUE] {col_name} ({col_description})"
                 elif flag_type.startswith("cond_"):
                     value = df_checked.loc[idx, col_name]
-                    error_msg = f"[CONDITIONAL ERROR] {col_name} ({col_description}): Conditional rule '{flag_type}' violated"
+                    error_msg = f"[CONDITIONAL ERROR] {col_name} ({col_description}): {flag_type}"
                 else:
                     error_msg = f"[ERROR] {col_name} ({col_description}): {flag_type}"
                 
@@ -451,7 +451,7 @@ def main():
 
     run_pipeline(
         input_path=args.input,
-        out_report=args.out,
+        out_report=args.out_json,
         mode=mode,
         sheet_name=args.sheet,
         meta_rows=args.meta_rows,
