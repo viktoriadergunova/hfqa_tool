@@ -33,9 +33,10 @@ m_score:
   calculation:
     # Parent / Child identification
     site_name_col: "P3"
-    relevance_col: "C9"
-    role_child: "[yes]"
-    role_parent: "[no]"
+  # Inheritance logic is currently disabled 
+    #relevance_col: "C9"
+    #role_child: "[yes]"
+    #role_parent: "[no]"
 
     # Temperature gradient (borehole)
     t_method_top_col: "C31"
@@ -74,7 +75,10 @@ m_score:
         # Case 1 — Continuous log (C37 > 3)
         continuous_log:
           when:
-            C37_T_number: ">3"
+            C37_T_number:
+              op: ">"
+              value: 3
+              
           rules:
             equilibrium_or_corrected:
               methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]
@@ -100,7 +104,9 @@ m_score:
         # Case 3 — One single point + surface temperature
         one_single_point_plus_surface_T:
           when:
-            C31_T_method_top: "==[SUR]"
+            C31_T_method_top:
+              op: "=="
+              value: "[SUR]"
           rules:
             equilibrium_or_corrected:
               C32_methods_any_of: ["[cBHT]", "[cDST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"] # TODO make sure c32 is only used 
@@ -156,7 +162,9 @@ m_score:
         number_of_conductivities:
           C_field: "C47"
           apply_only_if:
-            C42_tc_location: "!=[Literature/unspecified]"
+            C42_tc_location:
+              op: "!="
+              value: "[Literature/unspecified]"
           mapping:
             ">15": 0.0
             "1-15": -0.1

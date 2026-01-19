@@ -1,0 +1,1170 @@
+columns:
+  P1:
+    dtype: float64
+    range:
+    - -999999.9
+    - 999999.9
+    obligation: M
+    comment: HF Value
+  P2:
+    dtype: float64
+    range:
+    - 0.0
+    - 999999.9
+    obligation: M
+    comment: HF Uncertainty
+  P3:
+    dtype: string
+    obligation: M
+    comment: Name
+  P4:
+    dtype: float64
+    range:
+    - -90.0
+    - 90.0
+    obligation: M
+    comment: Latitude
+  P5:
+    dtype: float64
+    range:
+    - -180.0
+    - 180.0
+    obligation: M
+    comment: Longitude
+  P6:
+    dtype: float64
+    range:
+    - -12000.0
+    - 9000.0
+    obligation: M
+    comment: Elevation
+  P7:
+    dtype: list[string]
+    allowed:
+    - '[unspecified]'
+    - '[offshore-(continental)]'
+    - '[onshore-(continental)]'
+    - '[other-(specify-in-comments)]'
+    - '[offshore-(marine)]'
+    - '[onshore-(lake-river-etc.)]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Location Type (multi-select)
+  P8:
+    dtype: string
+    obligation: R
+    comment: Comments (Parent level)
+  P9:
+    dtype: string
+    allowed:
+    - '[yes]'
+    - '[no]'
+    - '[unspecified]'
+    obligation: R
+    comment: Correction HP
+  P10:
+    dtype: float64
+    range:
+    - -12000.0
+    - 9000.0
+    obligation: R
+    comment: Total MD
+  P11:
+    dtype: float64
+    range:
+    - -12000.0
+    - 9000.0
+    obligation: R
+    comment: TVD
+  P12:
+    dtype: list[string]
+    allowed:
+    - '[indirect-(gtm-bsr-cpd-etc.)]'
+    - '[unspecified]'
+    - '[other-(specify-in-comments)]'
+    - '[probing-clustering]'
+    - '[drilling-clustering]'
+    - '[tunneling]'
+    - '[probing-(offshore-ocean)]'
+    - '[mining]'
+    - '[probing-(onshore-lake-river-etc.)]'
+    - '[drilling]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Type of Exploration Method (multi-select)
+  P13:
+    dtype: list[string]
+    allowed:
+    - '[groundwater]'
+    - '[hydrocarbon]'
+    - '[geothermal]'
+    - '[other-(specify-in-comments)]'
+    - '[underground-storage]'
+    - '[research]'
+    - '[tunneling]'
+    - '[mining]'
+    - '[unspecified]'
+    - '[mapping]'
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Exploration Purpose (multi-select)
+  C1:
+    dtype: float64
+    range:
+    - -999999.9
+    - 999999.9
+    obligation: M
+    comment: HF Value (Child level)
+  C2:
+    dtype: float64
+    range:
+    - 0.0
+    - 999999.9
+    obligation: R
+    comment: HF Uncertainty (Child level)
+  C3:
+    dtype: list[string]
+    allowed:
+    - '[interval-method]'
+    - '[boot-strapping-method]'
+    - '[other-(specify-in-comments)]'
+    - '[bullard-method]'
+    - '[unspecified]'
+    - '[other-numerical-computations]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: HF Method (multi-select)
+  C4:
+    dtype: float64
+    range:
+    - 0.0
+    - 19999.9
+    obligation: M
+    comment: HF Interval Top
+  C5:
+    dtype: float64
+    range:
+    - 0.0
+    - 19999.9
+    obligation: M
+    comment: HF Interval Bottom
+  C6:
+    dtype: float64
+    range:
+    - 0.0
+    - 999.9
+    obligation: R
+    comment: Penetration Depth
+  C7:
+    dtype: string
+    obligation: M
+    comment: Primary publication reference
+  C8:
+    dtype: list[string]
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Primary reference (multi-entry)
+  C9:
+    dtype: string
+    allowed:
+    - '[yes]'
+    - '[no]'
+    obligation: M
+    comment: Relevant Child
+  C10:
+    dtype: list[string]
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Comments (Child level; multi-entry)
+  C11:
+    dtype: string
+    allowed:
+    - '[not-considered]'
+    - '[considered-p]'
+    - '[considered-pt]'
+    - '[considered-t]'
+    - '[unspecified]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: 'Flag: situ thermal properties considered (p, T, pT)'
+  C12:
+    dtype: string
+    allowed:
+    - '[drift-corrected]'
+    - '[tilt-corrected]'
+    - '[corrected-(specify-in-comments)]'
+    - '[not-corrected]'
+    - '[unspecified]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: 'Flag: temperature corrections'
+  C13:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: R
+    comment: 'Flag: sedimentation corrections'
+  C14:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: R
+    comment: 'Flag: erosion corrections'
+  C15:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: M
+    comment: 'Flag: topographic corrections'
+  C16:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: M
+    comment: 'Flag: paleoclimatic corrections'
+  C17:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: M
+    comment: 'Flag: transient corrections'
+  C18:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: M
+    comment: 'Flag: convection processes corrections'
+  C19:
+    dtype: string
+    allowed:
+    - '[not-recognized]'
+    - '[present-and-corrected]'
+    - '[present-not-significant]'
+    - '[unspecified]'
+    - '[present-and-not-corrected]'
+    obligation: M
+    comment: 'Flag: heat refraction effets corrections'
+  C20:
+    dtype: list[string]
+    allowed:
+    - '[expedition-cruise-number]'
+    - '[d-v-joides-resolution]'
+    - '[d-v-platform]'
+    - '[r-v-ship]'
+    - '[other-(specify-in-comments)]'
+    - '[d-v-glomar-challenger]'
+    - '[unspecified]'
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Platform, vessel, or expedition
+  C21:
+    dtype: list[string]
+    allowed:
+    - '[submersible-probe]'
+    - '[outrigger-probe-(lister)-with-corer]'
+    - '[single-steel-probe-(bullard)]'
+    - '[violin-bow-probe-(lister)]'
+    - '[outrigger-probe-(autonomous)-without-corer]'
+    - '[single-steel-probe-(bullard)-in-situ-tc]'
+    - '[outrigger-probe-(von-herzen)-in-situ-tc]'
+    - '[other-(specify-in-comments)]'
+    - '[outrigger-probe-(haenel)-in-situ-tc]'
+    - '[outrigger-probe-(ewing)-without-corer]'
+    - '[outrigger-probe-(ewing)-with-corer]'
+    - '[unspecified]'
+    - '[outrigger-probe-(autonomous)-with-corer]'
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Probe type
+  C22:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.9
+    obligation: R
+    comment: Probe length
+  C23:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.9
+    obligation: R
+    comment: Probe tilt
+  C24:
+    dtype: float64
+    range:
+    - -273.15
+    - 999.99
+    obligation: O
+    comment: Bottom water temperature
+  C25:
+    dtype: list[string]
+    allowed:
+    - dolostone
+    - foid_bearing_alkali_feldspar_trachyte
+    - alkali_feldspar_rhyolite
+    - non_clastic_siliceous_sedimentary_material
+    - foid_gabbroid
+    - quartz_anorthosite
+    - breccia
+    - igneous_rock
+    - carbonatite
+    - iron_rich_sedimentary_rock
+    - boulder_gravel_size_sediment
+    - clastic_conglomerate
+    - latite
+    - quartz_trachyte
+    - clastic_sandstone
+    - siliceous_ooze
+    - foid_bearing_gabbro
+    - quartz_gabbro
+    - foid_bearing_monzodiorite
+    - duricrust
+    - foidolite
+    - anorthosite
+    - aphanite
+    - calcareous_carbonate_sedimentary_rock
+    - glaucophane_lawsonite_epidote_metamorphic_rock
+    - lignite
+    - pyroclastic_rock
+    - crystalline_carbonate
+    - clastic_mudstone
+    - alkali_feldspar_trachyte
+    - clastic_sediment
+    - ash_and_lapilli
+    - foliated_metamorphic_rock
+    - monzogabbroic_rock
+    - diamicton
+    - intermediate_composition_igneous_rock
+    - anthracite_coal
+    - fragmental_igneous_material
+    - peridotite
+    - phosphate_rich_sediment
+    - pure_carbonate_sedimentary_rock
+    - quartz_monzodiorite
+    - alkali_feldspar_syenite
+    - impure_limestone
+    - quartz_monzonite
+    - sedimentary_material
+    - basanitic_foidite
+    - anthropogenic_material
+    - high_magnesium_fine_grained_igneous_rocks
+    - rhyolitoid
+    - monzodiorite
+    - pegmatite
+    - gravel
+    - monzodioritic_rock
+    - dioritoid
+    - coal
+    - pure_dolomitic_sediment
+    - rock
+    - dolomitic_or_magnesian_sedimentary_rock
+    - organic_rich_sedimentary_rock
+    - carbonate_sediment
+    - mica_schist
+    - hornfels
+    - monzogranite
+    - orthogneiss
+    - paragneiss
+    - syenite
+    - boninite
+    - gneiss
+    - slate
+    - grainstone
+    - tholeiitic_basalt
+    - composite_genesis_rock
+    - sand
+    - phaneritic_igneous_rock
+    - tephritic_foidite
+    - generic_sandstone
+    - aplite
+    - schist
+    - carbonate_rich_mud
+    - foid_gabbro
+    - chalk
+    - chemical_sedimentary_material
+    - foid_bearing_diorite
+    - natural_unconsolidated_material
+    - packstone
+    - boundstone
+    - phonolitic_foidite
+    - silicate_mud
+    - foid_syenitoid
+    - sedimentary_rock
+    - non_clastic_siliceous_sediment
+    - gabbro
+    - sand_size_sediment
+    - rock_salt
+    - granofels
+    - organic_rich_sedimentary_material
+    - carbonate_sedimentary_rock
+    - impure_dolostone
+    - kalsilitic_and_melilitic_rock
+    - composite_genesis_material
+    - metamorphic_rock
+    - syenogranite
+    - alkali_feldspar_syenitic_rock
+    - foid_bearing_anorthosite
+    - mud
+    - tephritic_phonolite
+    - trachytoid
+    - gabbroic_rock
+    - travertine
+    - breccia_gouge_series
+    - granodiorite
+    - organic_bearing_mudstone
+    - carbonate_rich_mudstone
+    - carbonate_wackestone
+    - pyroxenite
+    - peat
+    - alkali-olivine_basalt
+    - foid_monzodiorite
+    - foidite
+    - phosphate_rich_sedimentary_material
+    - iron_rich_sediment
+    - quartzite
+    - siltstone
+    - spilite
+    - carbonate_mudstone
+    - syenitoid
+    - quartz_latite
+    - sapropel
+    - basic_igneous_rock
+    - dioritic_rock
+    - quartz_rich_igneous_rock
+    - foid_bearing_trachyte
+    - syenitic_rock
+    - granulite
+    - hornblendite
+    - arenite
+    - calcareous_carbonate_sediment
+    - clastic_sedimentary_material
+    - clastic_sedimentary_rock
+    - exotic_composition_igneous_rock
+    - intermediate_composition_igneous_material
+    - foid_monzosyenite
+    - latitic_rock
+    - monzonite
+    - phonolitic_tephrite
+    - shale
+    - pebble_gravel_size_sediment
+    - impure_dolomitic_sediment
+    - clay
+    - tonalite
+    - fault_related_material
+    - phonolitoid
+    - generic_conglomerate
+    - anorthositic_rock
+    - tephrite
+    - tephritoid
+    - gravel_size_sediment
+    - exotic_evaporite
+    - trachyte
+    - iron_rich_sedimentary_material
+    - impact_generated_material
+    - glass_rich_igneous_rock
+    - foid_bearing_monzogabbro
+    - metasomatic_rock
+    - cataclasite_series
+    - ultrabasic_igneous_rock
+    - evaporite
+    - granite
+    - carbonate_ooze
+    - dolomitic_sediment
+    - foid_syenite
+    - basic_igneous_material
+    - acidic_igneous_rock
+    - rock_gypsum_or_anhydrite
+    - foid_dioritoid
+    - serpentinite
+    - limestone
+    - foid_bearing_latite
+    - exotic_alkaline_rock
+    - quartz_diorite
+    - gabbroid
+    - foiditoid
+    - fragmental_igneous_rock
+    - basanite
+    - carbonate_mud
+    - quartz_syenite
+    - non_clastic_siliceous_sedimentary_rock
+    - bauxite
+    - andesite
+    - carbonate_sedimentary_material
+    - amphibolite
+    - glassy_igneous_rock
+    - phonolitic_basanite
+    - foid_monzogabbro
+    - bituminous_coal
+    - tuffite
+    - foid_bearing_monzonite
+    - wacke
+    - tephra
+    - organic_rich_sediment
+    - material_formed_in_surficial_environment
+    - porphyry
+    - phyllite
+    - quartz_alkali_feldspar_syenite
+    - basalt
+    - marble
+    - ooze
+    - calcareous_carbonate_sedimentary_material
+    - phyllonite
+    - trachytic_rock
+    - biogenic_sediment
+    - cobble_gravel_size_sediment
+    - impure_carbonate_sediment
+    - dolomitic_or_magnesian_sedimentary_material
+    - eclogite
+    - mylonitic_rock
+    - framestone
+    - alkali_feldspar_granite
+    - claystone
+    - acidic_igneous_material
+    - pure_carbonate_mudstone
+    - monzonitic_rock
+    - doleritic_rock
+    - granitoid
+    - pure_carbonate_sediment
+    - pyroclastic_material
+    - chlorite_actinolite_epidote_metamorphic_rock
+    - igneous_material
+    - silicate_mudstone
+    - tuff_breccia_agglomerate_or_pyroclastic_breccia
+    - hybrid_sedimentary_rock
+    - silt
+    - phosphorite
+    - phonolilte
+    - ash_breccia_bomb_or_block_tephra
+    - komatiitic_rock
+    - unconsolidated_material
+    - foid_diorite
+    - anthropogenic_unconsolidated_material
+    - generic_mudstone
+    - quartz_monzogabbro
+    - migmatite
+    - rhyolite
+    - alkali_feldspar_trachytic_rock
+    - sediment
+    - residual_material
+    - fine_grained_igneous_rock
+    - ash_tuff_lapillistone_and_lapilli_tuff
+    - dacite
+    - pure_calcareous_carbonate_sediment
+    - diorite
+    - impure_carbonate_sedimentary_rock
+    - biogenic_silica_sedimentary_rock
+    - skarn
+    - mud_size_sediment
+    - quartz_alkali_feldspar_trachyte
+    - diamictite
+    - foid_bearing_alkali_feldspar_syenite
+    - foid_bearing_syenite
+    - ultramafic_igneous_rock
+    - hybrid_sediment
+    - monzogabbro
+    - impure_calcareous_carbonate_sediment
+    - compound_material
+    obligation: O
+    multi_choice: true
+    separator: ;
+    comment: Lithology
+    normalization:
+      enforce_brackets: false
+  C26:
+    dtype: list[string]
+    allowed:
+    - rhyacian
+    - kimmeridgian
+    - cambrianstage2
+    - llandovery
+    - lopingian
+    - cisuralian
+    - cryogenian
+    - pragian
+    - upperpleistocene
+    - katian
+    - eoarchean
+    - drumian
+    - hettangian
+    - guadalupian
+    - upperordovician
+    - lowerordovician
+    - neoproterozoic
+    - eocene
+    - rhaetian
+    - tonian
+    - emsian
+    - wuchiapingian
+    - neoarchean
+    - lutetian
+    - mesozoic
+    - middlemississippian
+    - mississippian
+    - uppertriassic
+    - cambrianstage4
+    - rupelian
+    - permian
+    - selandian
+    - piacenzian
+    - cambrianstage3
+    - holocene
+    - visean
+    - wordian
+    - floian
+    - changhsingian
+    - middlejurassic
+    - pliocene
+    - fortunian
+    - cenomanian
+    - phanerozoic
+    - thanetian
+    - gorstian
+    - carnian
+    - neogene
+    - northgrippian
+    - pennsylvanian
+    - sheinwoodian
+    - bathonian
+    - kungurian
+    - middlepleistocene
+    - paleoproterozoic
+    - norian
+    - pleistocene
+    - induan
+    - santonian
+    - tithonian
+    - archean
+    - maastrichtian
+    - homerian
+    - meghalayan
+    - callovian
+    - sandbian
+    - cambrianseries2
+    - ladinian
+    - lowerpennsylvanian
+    - siderian
+    - proterozoic
+    - telychian
+    - miaolingian
+    - middlepennsylvanian
+    - cambrian
+    - upperpennsylvanian
+    - danian
+    - mesoproterozoic
+    - turonian
+    - carboniferous
+    - hirnantian
+    - silurian
+    - quaternary
+    - uppercretaceous
+    - tremadocian
+    - middleordovician
+    - hadean
+    - bajocian
+    - oxfordian
+    - langhian
+    - cambrianstage5
+    - rhuddanian
+    - bartonian
+    - ludlow
+    - wuliuan
+    - oligocene
+    - cenozoic
+    - tortonian
+    - cambrianseries3
+    - albian
+    - pridoli
+    - givetian
+    - ludfordian
+    - lowerjurassic
+    - miocene
+    - stenian
+    - priabonian
+    - chattian
+    - ediacaran
+    - paleocene
+    - aptian
+    - wenlock
+    - aalenian
+    - hauterivian
+    - jurassic
+    - roadian
+    - cambrianstage10
+    - aquitanian
+    - ordovician
+    - dapingian
+    - lowercretaceous
+    - calymmian
+    - asselian
+    - greenlandian
+    - famennian
+    - jiangshanian
+    - tournaisian
+    - gelasian
+    - uppermississippian
+    - lowermississippian
+    - messinian
+    - sakmarian
+    - coniacian
+    - darriwilian
+    - paibian
+    - capitanian
+    - eifelian
+    - serpukhovian
+    - terreneuvian
+    - middledevonian
+    - cretaceous
+    - devonian
+    - paleoarchean
+    - ionian
+    - sinemurian
+    - ypresian
+    - barremian
+    - mesoarchean
+    - paleozoic
+    - campanian
+    - gzhelian
+    - olenekian
+    - moscovian
+    - upperjurassic
+    - upperdevonian
+    - middletriassic
+    - berriasian
+    - calabrian
+    - zanclean
+    - lowerdevonian
+    - precambrian
+    - lochkovian
+    - valanginian
+    - frasnian
+    - aeronian
+    - kasimovian
+    - ectasian
+    - triassic
+    - artinskian
+    - guzhangian
+    - burdigalian
+    - serravallian
+    - statherian
+    - orosirian
+    - paleogene
+    - toarcian
+    - lowertriassic
+    - furongian
+    - pliensbachian
+    - anisian
+    - bashkirian
+    obligation: O
+    multi_choice: true
+    separator: ;
+    comment: Stratigraphy
+    normalization:
+      enforce_brackets: false
+  C27:
+    dtype: float64
+    range:
+    - -99999.99
+    - 99999.99
+    obligation: M
+    comment: Temperature gradient
+  C28:
+    dtype: float64
+    range:
+    - -99999.99
+    - 99999.99
+    obligation: R
+    comment: Temperature gradient uncertainty
+  C29:
+    dtype: float64
+    range:
+    - -99999.99
+    - 99999.99
+    obligation: O
+    comment: Corrected temperature gradient
+  C30:
+    dtype: float64
+    range:
+    - -99999.99
+    - 99999.99
+    obligation: O
+    comment: Corrected temperature gradient uncertainty
+  C31:
+    dtype: list[string]
+    allowed:
+    - '[cdts]'
+    - '[rtdpert]'
+    - '[dtspert]'
+    - '[logpert]'
+    - '[bht]'
+    - '[cbht]'
+    - '[rtdeq]'
+    - '[cht-ft]'
+    - '[dtseq]'
+    - '[gtm]'
+    - '[bsr]'
+    - '[blk]'
+    - '[egrt]'
+    - '[cpd]'
+    - '[crtd]'
+    - '[other-(specify-in-comments)]'
+    - '[logeq]'
+    - '[xen]'
+    - '[grt]'
+    - '[sur]'
+    - '[unspecified]'
+    - '[odtt-tp]'
+    - '[ht-ft]'
+    - '[clog]'
+    - '[odtt-pc]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Temperature method (top, multi-select)
+  C32:
+    dtype: list[string]
+    allowed:
+    - '[cdts]'
+    - '[rtdpert]'
+    - '[dtspert]'
+    - '[logpert]'
+    - '[bht]'
+    - '[cbht]'
+    - '[rtdeq]'
+    - '[cht-ft]'
+    - '[dtseq]'
+    - '[gtm]'
+    - '[bsr]'
+    - '[blk]'
+    - '[egrt]'
+    - '[cpd]'
+    - '[crtd]'
+    - '[other-(specify-in-comments)]'
+    - '[logeq]'
+    - '[xen]'
+    - '[grt]'
+    - '[sur]'
+    - '[unspecified]'
+    - '[odtt-tp]'
+    - '[ht-ft]'
+    - '[clog]'
+    - '[odtt-pc]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Temperature method (bottom, multi-select)
+  C33:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.99
+    obligation: R
+    comment: Shut-in time (top)
+  C34:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.99
+    obligation: R
+    comment: Shut-in time (bottom)
+  C35:
+    dtype: list[string]
+    allowed:
+    - '[other-published-correction-(specify-in-comments)]'
+    - '[aapg-correction]'
+    - '[cylinder-source-method]'
+    - '[inverse-numerical-modelling]'
+    - '[horner-plot]'
+    - '[line-source-explosion-method]'
+    - '[not-corrected]'
+    - '[unspecified]'
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Correction method (top)
+  C36:
+    dtype: list[string]
+    allowed:
+    - '[other-published-correction-(specify-in-comments)]'
+    - '[aapg-correction]'
+    - '[cylinder-source-method]'
+    - '[inverse-numerical-modelling]'
+    - '[horner-plot]'
+    - '[line-source-explosion-method]'
+    - '[not-corrected]'
+    - '[unspecified]'
+    obligation: R
+    multi_choice: true
+    separator: ;
+    comment: Correction method (bottom)
+  C37:
+    dtype: int64
+    range:
+    - 0
+    - 9999
+    obligation: R
+    comment: Number of temperature measurements
+  C38:
+    dtype: string
+    pattern: ^([0-9]{4}[-–][0-9]{2}|\[unspecified\])$
+    obligation: M
+    comment: 'Date of acquisition (format: YYYY-MM or [unspecified])'
+    normalization:
+      replace_dash: –
+      trim: true
+      collapse_space: true
+  C39:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.99
+    obligation: M
+    comment: Mean thermal conductivity
+  C40:
+    dtype: float64
+    range:
+    - 0.0
+    - 99.99
+    obligation: R
+    comment: Thermal conductivity uncertainty
+  C41:
+    dtype: list[string]
+    allowed:
+    - '[unspecified]'
+    - '[outcrop-samples]'
+    - '[cutting-samples]'
+    - '[other-(specify-in-comments)]'
+    - '[well-log-interpretation]'
+    - '[core-log-integration]'
+    - '[core-samples]'
+    - '[in-situ-probe]'
+    - '[mineral-computation]'
+    - '[assumed-from-literature]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity source
+  C42:
+    dtype: list[string]
+    allowed:
+    - '[actual-heat-flow-location]'
+    - '[other-location]'
+    - '[literature-unspecified]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity location
+  C43:
+    dtype: list[string]
+    allowed:
+    - '[lab-plane-source-full-space]'
+    - '[lab-line-source-full-space]'
+    - '[lab-line-source-half-space]'
+    - '[estimation-from-mineral-composition]'
+    - '[unspecified]'
+    - '[lab-point-source]'
+    - '[probe-pulse-technique]'
+    - '[lab-plane-source-half-space]'
+    - '[estimation-from-lithology-and-literature]'
+    - '[estimation-from-chlorine-content]'
+    - '[well-log-deterministic-approach]'
+    - '[well-log-empirical-equation]'
+    - '[lab-other-(specify-in-comments)]'
+    - '[estimation-from-water-content-porosity]'
+    obligation: M
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity method
+  C44:
+    dtype: list[string]
+    obligation: M
+    allowed:
+    - '[dry-measured]'
+    - '[saturated-measured]'
+    - '[saturated-measured-in-situ]'
+    - '[saturated-calculated]'
+    - '[other-(specify-in-comments)]'
+    - '[recovered]'
+    - '[unspecified]'
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity saturation
+  C45:
+    dtype: list[string]
+    obligation: M
+    allowed:
+    - '[corrected-in-situ-(t)]'
+    - '[unrecorded-ambient-pt-conditions]'
+    - '[actual-in-situ-(pt)-conditions]'
+    - '[recorded-ambient-pt-conditions]'
+    - '[corrected-in-situ-(p)]'
+    - '[replicated-in-situ-(t)]'
+    - '[replicated-in-situ-(pt)]'
+    - '[replicated-in-situ-(p)]'
+    - '[unspecified]'
+    - '[corrected-in-situ-(pt)]'
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity pT conditions
+  C46:
+    dtype: list[string]
+    obligation: M
+    allowed:
+    - '[t-ratcliffe-(1960)]'
+    - '[p-görgülü-et-al.-(2008)]'
+    - '[pt-emirov-&-ramazanova-(2007)]'
+    - '[p-fuchs-&-förster-(2014)]'
+    - '[p-sibbitt-(1975)]'
+    - '[t-kukkonen-et-al.-(1999)]'
+    - '[pt-hyndman-et-al.-(1974)]'
+    - '[t-zoth-&-haenel-(1988)]'
+    - '[pt-chapman-&-furlong-(1992)]'
+    - '[site-specific-experimental-relationships]'
+    - '[t-miranda-et-al.-(2018)]'
+    - '[t-tikhomirov-(1968)]'
+    - '[p-bridgman-(1924)]'
+    - '[other-(specify-in-comments)]'
+    - '[t-somerton-(1992)]'
+    - '[p-seipold-(2001)]'
+    - '[p-demirci-et-al.-(2004)]'
+    - '[pt-buntebarth-(1991)]'
+    - '[t-vosteen-&-schellschmidt-(2003)]'
+    - '[unspecified]'
+    - '[pt-ramazanova-&-emirov-(2010)]'
+    - '[p-durutürk-et-al.-(2002)]'
+    - '[t-funnell-et-al.-(1996)]'
+    - '[t-haenel-&-zoth-(1973)]'
+    - '[t-birch-&-clark-(1940)]'
+    - '[t-sekiguchi-(1984)]'
+    - '[t-anand-et-al.-(1973)]'
+    - '[pt-langseth-(1965)]'
+    - '[pt-ramazanova-&-emirov-(2012)]'
+    - '[t-chapman-et-al.-(1984)]'
+    - '[t-sun-et-al.-(2017)]'
+    - '[t-sass-et-al.-(1992)]'
+    - '[pt-abdulagatova-et-al.-(2009)]'
+    - '[pt-ratcliffe-(1960)]'
+    - '[t-kutas-&-gordienko-(1971)]'
+    - '[p-kukkonen-et-al.-(1999)]'
+    - '[pt-emirov-et-al.-(1997)]'
+    - '[pt-abdulagatov-et-al.-(2006)]'
+    - '[pt-emirov-et-al.-(2017)]'
+    - '[t-seipold-(2001)]'
+    - '[t-blesch-et-al.-(1983)]'
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity assumed functions
+  C47:
+    dtype: float64
+    range:
+    - 0.0
+    - 9.999
+    obligation: M
+    comment: Thermal conductivity number
+  C48:
+    dtype: list[string]
+    obligation: R
+    allowed:
+    - '[computation-from-probe-sensing]'
+    - '[other-(specify-in-comments)]'
+    - '[well-log-interpretation]'
+    - '[random-or-periodic-depth-sampling]'
+    - '[unspecified]'
+    - '[characterize-formation-conductivities]'
+    multi_choice: true
+    separator: ;
+    comment: Thermal conductivity averaging methodology
+  C49:
+    dtype: string
+    obligation: O
+    comment: IGSN (International Geo Sample Number)
+  A1:
+    dtype: string
+    obligation: '-'
+    comment: Reviewer name
+  A2:
+    dtype: string
+    obligation: '-'
+    comment: Reviewer comment
+  A3:
+    dtype: date
+    obligation: '-'
+    format: '%d.%m.%Y'
+    comment: Reviewer Date (DD.MM.YYYY)
+  A4:
+    dtype: string
+    obligation: '-'
+    comment: Country
+  A5:
+    dtype: string
+    obligation: '-'
+    comment: Region
+  A6:
+    dtype: string
+    obligation: '-'
+    comment: Continent
+  A7:
+    dtype: string
+    allowed:
+    - continental
+    - marine
+    obligation: '-'
+    comment: Domain (continental/marine)
+    normalization:
+      enforce_brackets: false
+  A8:
+    dtype: string
+    obligation: '-'
+    comment: Unique entry ID
+core:
+  ID:
+    dtype: int64
+    unique: true
+    min: 1
+  Obligation:
+    dtype: string
+    allowed:
+    - '-'
+    - r
+    - m
+    - o
+  Level:
+    dtype: string
+    allowed:
+    - parent
+    - child
+    - admin
