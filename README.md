@@ -27,14 +27,12 @@
 - pip, conda package manager
 
 ### Install from Github 
-
 ```bash
 git clone https://github.com/viktoriadergunova/hfqa_tool.git
 cd hfqa_tool
 pip install -r requirements.txt # install dependencies
 ```
 ### Dependencies
-
 ```
 pandas>=2.0
 pyarrow
@@ -44,7 +42,6 @@ pyyaml
 ### Data Preparation
 
 Your Excel file must follow offical GHFDB structure: #TODO add image
-
 ```
 Row 1-7:   Metadata rows (configurable)
 Row 8:     Column headers (ID, Level, Obligation, P1, P2, P3, ...)
@@ -53,13 +50,8 @@ Row 9+:    Data rows
 
 
 ## Quick Start - Vocabulary Validation
-
 ```bash
-python main.py --vocab-check \
-  --input your_data.xlsx \
-  --out-json validation_report.json \
-  --out-excel validated_data.xlsx \
-  --meta-rows 7
+python main.py --vocab-check --input your_data.xlsx --out-json validation_report.json --out-excel validated_data.xlsx --meta-rows 7
 ```
 **Parameters:**
 - `--vocab-check`: Run vocabulary validation mode
@@ -148,7 +140,188 @@ Context-dependent rules based on other field values:
 
 
 ## Quality Scoring
-TO BE CONTINUED
+
+The quality scoring module evaluates heat-flow data according to IHFC standards, providing a comprehensive assessment through three independent components:
+
+### Quick Start - Quality Scoring
+```bash
+python main.py --quality-score --input your_data.xlsx --out-json quality_report.json --out-excel quality_scored.xlsx --meta-rows 7
+```
+
+**Parameters:**
+- `--quality-score`: Run quality scoring mode
+- `--input`: Path to your Excel file
+- `--out-json`: Output path for JSON quality report
+- `--out-excel`: Output path for Excel file with quality scores
+- `--meta-rows`: Number of metadata rows (default: 7)
+- `--sheet`: Sheet index to process (default: 0)
+- `--debug-prefix`: Optional prefix for debug output files
+
+**Full example with all options:**
+```bash
+python main.py --input your_data.xlsx --quality-score --out-json out_quality.json --sheet 1 --meta-rows 7 --debug-prefix debug_run --out-excel out_quality.xlsx
+```
+
+### Quality Score Components
+
+The quality assessment consists of three independent scores that are combined into a final quality code:
+
+#### 1. U-Score (Uncertainty Quantification)
+Evaluates the numerical uncertainty of heat-flow determinations based on the coefficient of variation (COV):
+
+| Score | COV Range | Description |
+|-------|-----------|-------------|
+| U1 | < 5% | Excellent - Very low uncertainty |
+| U2 | 5-15% | Good - Low uncertainty |
+| U3 | 15-25% | Acceptable - Moderate uncertainty |
+| U4 | > 25% | Poor - High uncertainty |
+| Ux | N/A | Not determined / missing data |
+
+**Calculation:**
+```
+COV(%) = (Heat Flow Uncertainty / Heat Flow Mean) × 100
+```
+
+#### 2. M-Score (Methodological Quality)
+Assesses the quality of measurement methods for both temperature gradient and thermal conductivity determinations. The evaluation differs for borehole/mine data versus probe-sensing data.
+
+**Borehole/Mine Data:**
+- Evaluates temperature method (equilibrium vs. perturbed measurements)
+- Assesses thermal conductivity source and measurement conditions
+- Considers number of measurements and in-situ conditions
+
+**Probe-Sensing Data:**
+- Evaluates penetration depth and number of temperature points
+- Assesses water depth and probe tilt
+- Considers thermal conductivity measurement location and method
+
+| Score | Quality Range | Description |
+|-------|---------------|-------------|
+| M1 | ≥ 0.75 | Excellent methodology |
+| M2 | 0.50-0.74 | Good methodology |
+| M3 | 0.25-0.49 | Acceptable methodology |
+| M4 | < 0.25 | Poor methodology |
+| M*x | Any | Incomplete metadata (x-suffix indicates missing data) |
+
+**Example M-Score Calculation:**
+Starting from base value 1.0, penalties are applied based on:
+- Temperature measurement type and quality
+- Thermal conductivity source and measurement conditions
+- Number of measurements
+- Pressure/temperature corrections
+
+#### 3. P-Flags (Perturbation Effects)
+A 7-character code indicating the status of environmental perturbations that may affect heat-flow measurements:
+
+**Format:** `SxxxCxh` (example)
+
+Each position represents a specific perturbation:
+1. **S/s** - Sedimentation effects
+2. **E/e** - Erosion effects
+3. **T/t** - Topography/Bathymetry effects
+4. **P/p** - Paleoclimate effects
+5. **V/v** - Surface/Bottom water temperature variation
+6. **C/c** - Convection/Fluid flow
+7. **R/r** - Heat refraction effects
+
+**Character meanings:**
+- **Uppercase letter** (e.g., `S`, `E`) = Present and **corrected**
+- **Lowercase letter** (e.g., `s`, `e`) = Present but **not corrected**
+- **Uppercase `X`** = Present but **not significant**
+- **Lowercase `x`** = **Not recognized** or not present
+- **Dash `-`** = Unspecified/missing data
+
+**Examples:**
+- `SxxxCxh` = Sedimentation corrected, convection not recognized, heat refraction present but not corrected
+- `SETPV--` = Multiple effects corrected, convection and heat refraction unspecified
+- `-------` = All perturbations unspecified
+
+### Combined Quality Score
+
+The final quality score combines all three components:
+
+**Format:** `U[1-4]M[1-4][x].P-FLAGS`
+
+**Examples:**
+- `U1M1.SxxxCxh` - Excellent uncertainty, excellent methodology, specific perturbations
+- `U2M3x.-------` - Good uncertainty, acceptable methodology with missing metadata, unspecified perturbations
+- `U3M2.SETPVXR` - Acceptable uncertainty, good methodology, multiple perturbations addressed
+
+### Output Files
+
+#### JSON Quality Report
+```json
+{
+  "summary": {
+    "total_rows_processed": 150,
+    "quality_distribution": {
+      "U1": 45,
+      "U2": 67,
+      "U3": 28,
+      "U4": 10,
+      "M1": 34,
+      "M2": 56,
+      "M3": 42,
+      "M4": 18
+    },
+    "runtime_seconds": 3.42
+  },
+  "data": [
+    {
+      "row": 9,
+      "site_name": "Site-001",
+      "quality_U": "U1",
+      "quality_M": "M2",
+      "quality_P": "SxxxCxh",
+      "quality_combined": "U1M2.SxxxCxh"
+    }
+  ]
+}
+```
+
+#### Excel Output
+The Excel output includes all original data plus an additional column:
+- **`quality_score`** - Combined quality code (e.g., `U1M2.SxxxCxh`)
+
+### Quality Score Schema
+
+Quality scoring behavior is defined in `quality_score_schema.yaml`:
+
+**U-Score Configuration:**
+- Threshold values for uncertainty classes
+- Calculation method (coefficient of variation)
+
+**M-Score Configuration:**
+- Penalties for different measurement methods
+- Borehole vs. probe-sensing evaluation criteria
+- Required metadata fields
+
+**P-Flags Configuration:**
+- Perturbation field mappings (C13-C19)
+- Encoding rules for each perturbation type
+- Letter assignments for each effect
+
+### Interpreting Results
+
+**High-Quality Determinations:**
+- U1 or U2 (low uncertainty)
+- M1 or M2 (good methodology)
+- Perturbations corrected (uppercase letters in P-flags)
+
+**Use with Caution:**
+- U3 or U4 (high uncertainty)
+- M3 or M4 (questionable methodology)
+- M-score with 'x' suffix (incomplete metadata)
+- Uncorrected perturbations (lowercase letters in P-flags)
+
+**Example Quality Assessment:**
+
+| Score | Interpretation |
+|-------|----------------|
+| `U1M1.SxxxCxh` | **Excellent** - Low uncertainty, best methodology, sedimentation corrected |
+| `U2M2.SETPVXR` | **Very Good** - Low uncertainty, good methodology, most perturbations addressed |
+| `U3M3x.-------` | **Questionable** - Moderate uncertainty, acceptable but incomplete methodology, perturbations unknown |
+| `U4M4.sePvch` | **Poor** - High uncertainty, poor methodology, uncorrected perturbations |
 
 
 ## Documentation
@@ -177,7 +350,6 @@ Full documentation of all data fields is available in the schema files. Key fiel
 ## Testing
 
 Run the built-in test suite to verify functionality:
-
 ```bash
 python main.py --run-tests
 ```
@@ -198,7 +370,6 @@ We welcome contributions! Please see [ISSUEs.md](ISSUEs.md)
 ## Citation 
 
 If you use this tool in your research, please cite:
-
 ```bibtex
 @software{chishti2025hfqa,
   author = {Chishti, Saman F. and Balkan-Pazvantoğlu, Elif and Norden, Ben and 
@@ -249,6 +420,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
