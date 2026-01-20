@@ -377,5 +377,3 @@ def normalize_schema(schema: dict) -> dict:
                 p_flags["encoding"] = new_enc
 
     return schema
-
-    return schema
