@@ -372,7 +372,7 @@ columns:
   C23:
     dtype: float64
     range: [0.0, 99.9]
-    obligation: "R" # Relevant instead of M, and conditional check added for marine vs continental
+    obligation: "M" # Relevant instead of M, and conditional check added for marine vs continental
     comment: "Probe tilt"
 
   C24:
@@ -1152,7 +1152,7 @@ columns:
 
   C47:
     dtype: float64
-    range: [0.0, 9.999]
+    range: [0.0, 99.999]
     obligation: "M"
     comment: "Thermal conductivity number"
 
