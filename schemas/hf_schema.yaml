@@ -377,7 +377,7 @@ columns:
 
   C24:
     dtype: float64
-    range: [-273.15, 999.99]
+    range: [-273.15, 99.999]
     obligation: "O"
     comment: "Bottom water temperature"
 
