@@ -3,3 +3,4 @@ pyarrow
 openpyxl
 pyyaml
 xlsxwriter
+pytest
