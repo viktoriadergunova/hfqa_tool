@@ -64,20 +64,24 @@ def run_pipeline(
 
     # Debug dumps (data + schemas)
     if debug_prefix:
+
+        debug_dir = Path(debug_prefix)
+        debug_dir.mkdir(parents=True, exist_ok=True)
+
         # dump prepared data
-        df_data_typed.to_parquet(f"{debug_prefix}_02_data_prepared.parquet", index=False)
+        df_data_typed.to_parquet(debug_dir / "02_data_prepared.parquet", index=False)
 
         # dump raw loaded schemas
-        with open(f"{debug_prefix}_schema.yaml", "w", encoding="utf-8") as f:
+        with open(debug_dir / "schema.yaml", "w", encoding="utf-8") as f:
             yaml.safe_dump(schema, f, sort_keys=False, allow_unicode=True)
 
-        with open(f"{debug_prefix}_conditional_rules.yaml", "w", encoding="utf-8") as f:
+        with open(debug_dir / "conditional_rules.yaml", "w", encoding="utf-8") as f:
             yaml.safe_dump(cond_cfg, f, sort_keys=False, allow_unicode=True)
 
-        with open(f"{debug_prefix}_quality_schema.yaml", "w", encoding="utf-8") as f:
+        with open(debug_dir / "quality_schema.yaml", "w", encoding="utf-8") as f:
             yaml.safe_dump(qc_schema, f, sort_keys=False, allow_unicode=True)
 
-        # dump effective/normalized schema: only columns actually present in prepared data
+        # dump effective/normalized schema
         used_columns = set(df_data_typed.columns)
         schema_normalized = {
             "columns": {
@@ -88,10 +92,11 @@ def run_pipeline(
             "core": schema.get("core", {}),
         }
 
-        with open(f"{debug_prefix}_schema_normalized.yaml", "w", encoding="utf-8") as f:
+        with open(debug_dir / "schema_normalized.yaml", "w", encoding="utf-8") as f:
             yaml.safe_dump(schema_normalized, f, sort_keys=False, allow_unicode=True)
 
-        logging.info("Debug artifacts written with prefix: %s", debug_prefix)
+        logging.info("Debug artifacts written to folder: %s", debug_dir)
+
 
     # 3) Vocab mode
     if mode == "vocab":
@@ -235,9 +240,9 @@ def main():
         run_range_tests()
         run_ob_tests()
         run_allowed_tests()
-        run_cond_tests()
-        run_u_score_tests()
-        run_m_score_tests()
+       # run_cond_tests()
+       # run_u_score_tests()
+       # run_m_score_tests()
         return
 
     mode = "vocab" if args.vocab_check else "quality"

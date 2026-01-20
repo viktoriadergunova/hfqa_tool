@@ -1,0 +1,392 @@
+version: "1.0"
+schema_id: "hf_quality:v1"
+
+# =====================================================
+# STEP A — UNCERTAINTY SCORE (U-SCORE)
+# =====================================================
+u_score:
+  calculation:
+    value_col: "C1"
+    uncertainty_col: "C2"
+    site_name_col: "P3"
+    relevance_col: "C9"
+    role_child: "[yes]"
+    role_parent: "[no]"
+
+  thresholds:
+    U1: 5.0
+    U2: 15.0
+    U3: 25.0
+    U4: 100.0
+    Ux: "missing"
+
+
+# =====================================================
+# STEP B — METHODOLOGICAL SCORE (M-SCORE)
+# =====================================================
+m_score:
+  base_value: 1.0
+
+  calculation:
+    site_name_col: "P3"
+    m_route_col: "A7"
+
+    # --- Borehole temperature ---
+    t_method_top_col: "C31"
+    t_method_bottom_col: "C32"
+    t_number_col: "C37"
+
+    # --- Borehole conductivity ---
+    q_top_col: "C4"
+    q_bottom_col: "C5"
+    tc_location_col: "C42"
+    tc_source_col: "C41"
+    tc_number_col: "C47"
+    tc_saturation_col: "C44"
+    tc_pT_conditions_col: "C45"
+
+    # =================================================
+    # Marine / probe-sensing (Table 2)
+    # =================================================
+    probe_penetration_col: "C6"     # penetration depth (m)
+    probe_tilt_col: "C23"           # tilt (deg)
+    elevation_col: "P6"             # elevation (m); use abs(P6) as water depth mbsl offshore
+    corr_IS_flag_col: "C12"         # includes [Tilt corrected]
+    corr_BWT_flag_col: "C17"        # use as “corrected for BWT” indicator
+
+    # marine TC uses same fields plus tc_method
+    tc_method_col: "C43"
+
+  thresholds:
+    M1: 0.75
+    M2: 0.50
+    M3: 0.25
+    M4: 0.00
+    missing_suffix: "x"
+
+  # =====================================================
+  # Borehole
+  # =====================================================
+  borehole_logic:
+
+    temperature:
+      start_value: 1.0
+      cases:
+        continuous_log:
+          when:
+            C37_T_number:
+              op: ">"
+              value: 3
+          rules:
+            equilibrium_or_corrected:
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]
+              penalty: 0.1
+            perturbed:
+              methods_any_of: ["[LOGpert]"]
+              penalty: -0.1
+
+        multiple_single_T_points:
+          when: {}
+          rules:
+            equilibrium_or_corrected:
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[BHT]", "[DST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"]
+              penalty: -0.1
+            perturbed:
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DST]", "[RTDpert]", "[BLK]"]
+              penalty: -0.3
+            estimated:
+              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              penalty: -0.5
+
+        one_single_point_plus_surface_T:
+          when:
+            C31_T_method_top:
+              op: "=="
+              value: "[SUR]"
+          rules:
+            equilibrium_or_corrected:
+              C32_methods_any_of: ["[cBHT]", "[cDST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"]
+              penalty: -0.3
+            perturbed:
+              C32_methods_any_of: ["[BHT]", "[DST]", "[RTDpert]"]
+              penalty: -0.5
+            estimated:
+              C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              penalty: -0.6
+
+      missing_metadata:
+        required_C_fields: ["C31", "C32", "C37"]
+        rule: "apply_max_penalty_for_unresolvable_case_and_flag_x"
+
+    conductivity:
+      start_value: 1.0
+
+      gate_interval_depth_reported:
+        required_C_fields: ["C4", "C5"]
+        if_missing:
+          tc_score_fixed: 0.1
+          stop_scoring: true
+
+      blocks:
+        location:
+          C_field: "C42"
+          mapping:
+            "[Actual heat-flow location]": 0.0
+            "[Other location]": -0.1
+            "[Literature/unspecified]": -0.2
+
+        source_type:
+          C_field: "C41"
+          mapping:
+            "[In-situ probe]": 0.1
+            "[Core-log integration]": 0.1
+            "[Core samples]": 0.0
+            "[Cutting samples]": -0.1
+            "[Outcrop samples]": -0.1
+            "[Well-log interpretation]": -0.1
+            "[Mineral computation]": -0.2
+            "[Assumed from literature]": -0.2
+
+        number_of_conductivities:
+          C_field: "C47"
+          apply_only_if:
+            C42_tc_location:
+              op: "!="
+              value: "[Literature/unspecified]"
+          mapping:
+            ">15": 0.0
+            "1-15": -0.1
+            "unspecified_or_missing": -0.1
+
+        saturation:
+          C_field: "C44"
+          mapping:
+            "[Saturated measured]": 0.0
+            "[Saturated measured in situ]": 0.0
+            "[Saturated calculated]": -0.1
+            "[Recovered]": -0.1
+            "[Dry measured]": -0.2
+
+        pT_conditions:
+          C_field: "C45"
+          mapping:
+            "[Actual in-situ (pT) conditions]": 0.0
+            "[Replicated in-situ (pT)]": 0.0
+            "[Corrected in-situ (pT)]": 0.0
+            "[Replicated in-situ (p)]": -0.1
+            "[Corrected in-situ (p)]": -0.1
+            "[Replicated in-situ (T)]": -0.1
+            "[Corrected in-situ (T)]": -0.1
+            "[Recorded ambient pT conditions]": -0.2
+            "[Unrecorded ambient pT conditions]": -0.2
+            "[Unspecified]": -0.2
+
+      missing_metadata:
+        required_C_fields_after_gate:
+          - "C42"
+          - "C41"
+          - "C47"
+          - "C44"
+          - "C45"
+        rule: "apply_max_penalty_per_missing_block_and_flag_x"
+
+
+  # =====================================================
+  # Marine / Probe-sensing (Paper Table 2)
+  # =====================================================
+  marine_logic:
+
+    # -------------------------
+    # Temperature gradient (T-score) — probe-sensing
+    # -------------------------
+    temperature:
+      start_value: 1.0
+
+      blocks:
+
+        penetration_depth:
+          C_field: "C6"
+          bins:
+            gt_10m: { when: { op: ">", value: 10.0 }, penalty: 0.1 }
+            _3_to_10m: { when: { op: ">=", value: 3.0 }, penalty: 0.0 }
+            _1_to_3m:  { when: { op: ">=", value: 1.0 }, penalty: -0.1 }
+            lt_1m_or_unspecified: { when: { op: "<", value: 1.0 }, penalty: -0.2 }
+
+        number_of_temperature_points:
+          C_field: "C37"
+          bins:
+            gt_5: { when: { op: ">", value: 5.0 }, penalty: 0.1 }
+            _3_to_5: { when: { op: ">=", value: 3.0 }, penalty: 0.0 }
+            _2: { when: { op: "==", value: 2.0 }, penalty: -0.1 }
+            _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
+
+        water_depth:
+          # NOTE: derived from elevation P6 (mbsl ~ abs(P6) for offshore)
+          C_field: "P6"
+          corrected_if:
+            flag_col: "C17"
+            flag_value: "[Present and corrected]"
+            penalty_if_corrected: 0.0
+          bins:
+            gt_2500: { when: { op: ">", value: 2500.0 }, penalty: 0.0 }
+            _1500_to_2500: { when: { op: ">=", value: 1500.0 }, penalty: -0.1 }
+            lt_1500_or_unspecified: { when: { op: "<", value: 1500.0 }, penalty: -0.2 }
+
+        probe_tilt:
+          C_field: "C23"
+          corrected_if:
+            flag_col: "C12"
+            flag_value: "[Tilt corrected]"
+            penalty_if_corrected: 0.0
+          bins:
+            _0_to_10_or_corrected: { when: { op: ">=", value: 0.0 }, penalty: 0.0 }
+            _10_to_30: { when: { op: ">=", value: 10.0 }, penalty: -0.1 }
+            gt_30_or_unspecified: { when: { op: ">", value: 30.0 }, penalty: -0.2 }
+
+      missing_metadata:
+        required_C_fields:
+          - "C6"
+          - "C37"
+          - "P6"
+          - "C23"
+        rule: "apply_max_penalty_per_missing_block_and_flag_x"
+
+    # -------------------------
+    # Thermal conductivity (TC-score) — probe-sensing
+    # -------------------------
+    conductivity:
+      start_value: 1.0
+
+      blocks:
+
+        location:
+          C_field: "C42"
+          mapping:
+            "[Actual heat-flow location]": 0.0
+            "[Other location]": -0.1
+            "[Literature/unspecified]": -0.2
+
+        # Source type + saturation + method interactions 
+        source_type:
+          C_field: "C41"
+          mapping:
+            "[In-situ probe]": 0.0
+            "[Core samples]": 0.0
+            "[Core-log integration]": 0.0
+            "[Cutting samples]": -0.1
+            "[Outcrop samples]": -0.1
+            "[Well-log interpretation]": -0.1
+            "[Mineral computation]": -0.2
+            "[Assumed from literature]": -0.2
+
+        saturation:
+          C_field: "C44"
+          mapping:
+            "[Recovered]": 0.0
+            "[Saturated measured]": 0.0
+            "[Saturated calculated]": -0.1
+            "[Dry measured]": -0.2
+            "[Saturated measured in situ]": 0.0   
+
+        tc_method:
+          C_field: "C43"
+          mapping:
+            "[Probe - pulse technique]": 0.0
+            "[Estimation - from lithology and literature]": -0.1
+            "[Estimation - from water content/porosity]": -0.2
+            "[Estimation - from mineral composition]": -0.2
+
+        # Number of conductivities (Table 2): >3 / 2-3 / 0-1 or unspecified
+        number_of_conductivities:
+          C_field: "C47"
+          apply_only_if:
+            C42_tc_location:
+              op: "!="
+              value: "[Literature/unspecified]"
+          bins:
+            gt_3: { when: { op: ">", value: 3.0 }, penalty: 0.0 }
+            _2_to_3: { when: { op: ">=", value: 2.0 }, penalty: -0.1 }
+            _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
+
+        pT_conditions:
+          C_field: "C45"
+          mapping:
+            "[Actual in-situ (pT) conditions]": 0.0   
+            "[Replicated in-situ (pT)]": 0.0
+            "[Corrected in-situ (pT)]": 0.0
+            "[Replicated in-situ (p)]": -0.1
+            "[Corrected in-situ (p)]": -0.1
+            "[Replicated in-situ (T)]": -0.1
+            "[Corrected in-situ (T)]": -0.1
+            "[Recorded ambient pT conditions]": -0.2
+            "[Unrecorded ambient pT conditions]": -0.2
+            "[Unspecified]": -0.2
+
+
+      conditional_rules:
+        # In-situ pulse probe: +0.1 if (tc_method == pulse) AND (tc_source == in-situ probe) AND (tc_saturation == saturated measured in situ)
+        - when_all:
+            C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
+            C41_tc_source: { op: "==", value: "[In-situ probe]" }
+            C44_tc_saturation: { op: "==", value: "[Saturated measured in situ]" }
+          bonus: 0.1
+
+        # pT bonus: +0.1 only if tc_method == pulse AND pT == actual in-situ (pT)
+        - when_all:
+            C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
+            C45_tc_pT_conditions: { op: "==", value: "[Actual in-situ (pT) conditions]" }
+          bonus: 0.1
+
+      missing_metadata:
+        required_C_fields:
+          - "C42"
+          - "C41"
+          - "C43"
+          - "C44"
+          - "C45"
+          - "C47"
+        rule: "apply_max_penalty_per_missing_block_and_flag_x"
+
+  # =====================================================
+  # PERTURBATION FLAGS (P-FLAGS)
+  # =====================================================
+  p_flags:
+
+    # fixed order in final p-code
+    order:
+      - sedimentation
+      - erosion
+      - topography_bathymetry
+      - paleoclimate
+      - surface_bottom_water_variation
+      - convection
+      - heat_refraction
+
+    # map each process to the DB field (your columns C12-C19)
+    fields:
+      sedimentation: "C13"
+      erosion: "C14"
+      topography_bathymetry: "C15"
+      paleoclimate: "C16"
+      surface_bottom_water_variation: "C17"
+      convection: "C18"
+      heat_refraction: "C19"
+
+    # letter per position (must match order above)
+    letters:
+      sedimentation: "S"
+      erosion: "E"
+      topography_bathymetry: "T"
+      paleoclimate: "P"
+      surface_bottom_water_variation: "V"
+      convection: "C"
+      heat_refraction: "R"
+
+    encoding:
+      "[Present and corrected]": "UPPER"          # -> use the position letter uppercase
+      "[Present and not corrected]": "LOWER"      # -> use the position letter lowercase
+      "[Present not significant]": "X"            # -> literal "X"
+      "[Not recognized]": "x"                     # -> literal "x"
+      "[unspecified]": "-"                        # -> literal "-"
+  
+     

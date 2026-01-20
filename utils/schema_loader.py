@@ -12,7 +12,7 @@ def load_raw_yaml(path: str) -> dict:
 
 def get_col_comment(schema_dict: dict, col_name: str) -> str:
     """
-    Retrieve the human-readable comment for a column from the schema.
+    Retrieve comment for a column from the schema.
 
     """
     for section in ("columns", "core"):
@@ -27,7 +27,7 @@ def load_all_schemas() -> tuple[dict, dict, dict]:
     - Conditional check schema
     - Quality control (QC) schema (raw)
     """
-    hf_schema = load_and_normalize_schema("hf_schema.yaml")
-    qc_schema = load_and_normalize_schema("quality_score_schema.yaml")
-    conditional_schema = load_and_normalize_schema("conditional_rules.yaml")
+    hf_schema = load_and_normalize_schema("schemas/hf_schema.yaml")
+    qc_schema = load_and_normalize_schema("schemas/quality_score_schema.yaml")
+    conditional_schema = load_and_normalize_schema("schemas/conditional_rules.yaml")
     return hf_schema, conditional_schema, qc_schema
