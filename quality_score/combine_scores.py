@@ -28,18 +28,32 @@ def _base_m(m: str) -> str:
     return m[:2] if m.startswith("M") and len(m) >= 2 else "Mx"
 
 
-def combine_u_m_scores(
+def _norm_p(p: str | None) -> str:
+    """
+    P-flags are expected as 7-character code (e.g. 'SxxXPxR') or '-------'.
+    Missing/invalid -> '-------' (paper uses '-' for insufficient info).
+    """
+    if p is None:
+        return "-------"
+    s = str(p).strip()
+    return s if len(s) == 7 else "-------"
+
+
+def combine_u_m_p_scores(
     df: pd.DataFrame,
     u_col: str = "quality_U",
     m_col: str = "quality_M",
+    p_col: str = "quality_P",
     out_col: str = "quality_Q",
     out_rank_col: str = "quality_rank",
+    out_col_with_p: str = "quality_QP",
     separator: str = ".",
 ) -> pd.DataFrame:
     """
     Adds:
       - out_col: 'U2.M3x'
       - out_rank_col: worst-case numeric rank for sorting/filtering
+      - out_col_with_p: 'U2.M3x.SxxxCxh' (always appended; if P missing -> '-------')
     """
     u = (
         df[u_col].astype("string")
@@ -51,9 +65,15 @@ def combine_u_m_scores(
         if m_col in df.columns
         else pd.Series(["Mx"] * len(df), index=df.index, dtype="string")
     )
+    p = (
+        df[p_col].astype("string")
+        if p_col in df.columns
+        else pd.Series(["-------"] * len(df), index=df.index, dtype="string")
+    )
 
     u_norm = u.fillna("Ux").map(_norm_u)
     m_norm = m.fillna("Mx").map(_norm_m)
+    p_norm = p.fillna("-------").map(_norm_p)
 
     df[out_col] = (u_norm.astype("string") + separator + m_norm.astype("string")).astype("string")
 
@@ -61,5 +81,8 @@ def combine_u_m_scores(
     u_rank = u_norm.map(lambda x: _U_ORDER.get(x, 9)).astype("int64")
     m_rank = m_norm.map(lambda x: _M_ORDER.get(_base_m(x), 9)).astype("int64")
     df[out_rank_col] = u_rank.where(u_rank >= m_rank, m_rank)
+
+    # append P-flags (paper-style); missing/invalid -> '-------'
+    df[out_col_with_p] = (df[out_col].astype("string") + separator + p_norm.astype("string")).astype("string")
 
     return df

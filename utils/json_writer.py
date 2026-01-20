@@ -214,42 +214,59 @@ def write_quality_report(
     """
     Build and write the quality scoring report as JSON.
     Row numbering aligns with validation report (Excel row numbers).
-    Outputs U, M, and combined quality score.
+
+    Outputs:
+      - U score
+      - M score
+      - P flags (7-letter paper code)
+      - combined quality code: U.M.P
     """
     row_offset = meta_rows + 1  # meta + header (same as validation)
 
     child_determinations: list[dict[str, Any]] = []
 
-    for pos0, (_, row) in enumerate(df_data_typed.iterrows()):  # pos0: 0..N-1
+    for pos0, (_, row) in enumerate(df_data_typed.iterrows()):
         excel_row = row_offset + pos0
 
         u = row.get("quality_U", "Ux")
         m = row.get("quality_M", "Mx")
-        q = row.get("quality_Q", f"{u}.{m}")  # fallback if combine step missing
-        rank = row.get("quality_rank")        # may be None
+        p = row.get("quality_P", "-------")
+
+        # Prefer fully combined paper code if present
+        q = row.get("quality_QP")
+        if not q:
+            # robust fallback
+            q = f"{u}.{m}.{p}"
+
+        rank = row.get("quality_rank")
 
         entry: dict[str, Any] = {
             "row_excel_number": excel_row,
             "site_id": row.get("ID"),
             "site_name": row.get("P3", "N/A"),
 
-            # keep explicit fields (recommended)
+            # explicit, paper-aligned fields
             "u_score": u,
             "m_score": m,
+            "p_flags": p,
             "quality_score": q,
+            "quality_rank": rank,
+
             "values": {
                 "C1_HF": _num_or_zero(row.get("C1")),
                 "C2_Unc": _num_or_zero(row.get("C2")),
             },
         }
-        
+
         child_determinations.append(entry)
 
     final_output = {
         "mode": "quality_scoring",
         "summary": {
             "total_determinations": len(df_data_typed),
-            "high_accuracy_U1_U2": int(df_data_typed["quality_U"].isin(["U1", "U2"]).sum()),
+            "high_accuracy_U1_U2": int(
+                df_data_typed["quality_U"].isin(["U1", "U2"]).sum()
+            ),
             "runtime_seconds": time.time() - start_time,
         },
         "detailed_results": child_determinations,

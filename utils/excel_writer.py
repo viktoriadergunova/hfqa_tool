@@ -44,42 +44,44 @@ def get_col_comment(schema_dict: dict, col_name: str) -> str:
     return ""
 
 
+import pandas as pd
+from pandas.api.types import is_bool_dtype
+
+
 def generate_vocab_check_comments(
+    df_raw: pd.DataFrame,
     df_checked: pd.DataFrame,
     schema: dict,
-    first_data_index: int,  # kept for API compatibility; not required for comment generation
+    meta_rows: int,
+    out_col: str = "Validation_Comments",
 ) -> pd.DataFrame:
     """
-    Creates a new column 'Validation_Comments' with human-readable error messages
-    for each row based on validation flags.
+    Return RAW Excel dataframe with ONE appended Validation_Comments column.
+    Meta rows get 'META ROW', data rows get vocab validation comments.
     """
 
-    # Keep original columns only (not the flags)
-    original_cols = [col for col in df_checked.columns if "__" not in col]
-    df_result = df_checked[original_cols].copy()
+    df_out = df_raw.copy()
 
-    # Collect flag columns once (and ensure we treat NA as False)
+    # prepare empty column
+    df_out[out_col] = pd.NA
+
+    # ---- build comments from df_checked (data rows only) ----
     flag_cols = [c for c in df_checked.columns if "__" in c]
 
-    # If some flag columns are not bool dtype, we still evaluate them safely via fillna(False) + astype(bool)
     flags_view = {}
     for c in flag_cols:
         s = df_checked[c]
         if not is_bool_dtype(s):
-            # allow object/int/bool/boolean; treat truthy as True, NA as False
             flags_view[c] = s.fillna(False).astype(bool)
         else:
-            # pandas BooleanDtype may contain NA -> fillna(False) for safe bool checks
             flags_view[c] = s.fillna(False)
 
-    validation_comments: list[str] = []
+    comments: list[str] = []
 
     for idx in df_checked.index:
         row_comments: list[str] = []
 
         for col in flag_cols:
-            # FIX 1: do NOT use "is True" / "is not True" (identity check).
-            # Always use boolean evaluation.
             if not bool(flags_view[col].at[idx]):
                 continue
 
@@ -87,19 +89,81 @@ def generate_vocab_check_comments(
             col_description = get_col_comment(schema, col_name)
 
             if flag_type == "missing":
-                error_msg = f"[MISSING] {col_name} ({col_description})"
+                msg = f"[MISSING] {col_name} ({col_description})"
             elif flag_type == "out_of_range":
-                error_msg = f"[RANGE ERROR] {col_name} ({col_description})"
+                msg = f"[RANGE ERROR] {col_name} ({col_description})"
             elif flag_type == "invalid":
-                error_msg = f"[INVALID VALUE] {col_name} ({col_description})"
+                msg = f"[INVALID VALUE] {col_name} ({col_description})"
             elif flag_type.startswith("cond_"):
-                error_msg = f"[CONDITIONAL ERROR] {col_name} ({col_description}): {flag_type}"
+                msg = f"[CONDITIONAL ERROR] {col_name} ({col_description}): {flag_type}"
             else:
-                error_msg = f"[ERROR] {col_name} ({col_description}): {flag_type}"
+                msg = f"[ERROR] {col_name} ({col_description}): {flag_type}"
 
-            row_comments.append(error_msg)
+            row_comments.append(msg)
 
-        validation_comments.append(" | ".join(row_comments) if row_comments else "OK")
+        comments.append(" | ".join(row_comments) if row_comments else "OK")
 
-    df_result["Validation_Comments"] = validation_comments
-    return df_result
+    # ---- write comments into RAW df (after meta rows) ----
+    df_out.iloc[:meta_rows, df_out.columns.get_loc(out_col)] = "META ROW"
+    df_out.iloc[meta_rows:, df_out.columns.get_loc(out_col)] = comments
+
+    return df_out
+
+
+
+def generate_quality_score_column(
+    df_raw: pd.DataFrame,
+    df_scored: pd.DataFrame,
+    meta_rows: int,
+    source_col: str = "quality_QP",
+    out_col: str = "quality_score",
+) -> pd.DataFrame:
+    """
+    Append one QC column to RAW Excel dataframe.
+    Meta rows get empty values, data rows get QC score.
+    """
+
+    if source_col not in df_scored.columns:
+        raise KeyError(f"Source QC column '{source_col}' not found in df_scored")
+
+    df_out = df_raw.copy()
+
+    # initialize column with NA
+    df_out[out_col] = pd.NA
+
+    # assign only to data rows
+    df_out.iloc[meta_rows:, df_out.columns.get_loc(out_col)] = (
+        df_scored[source_col].astype("string").values
+    )
+
+    return df_out
+
+
+
+def write_excel_with_quality_score(
+    df_meta: pd.DataFrame | None,
+    df_with_quality: pd.DataFrame,
+    output_path: str,
+    sheet_name: str = "Quality Results",
+) -> None:
+    """
+    Writes an Excel file where meta rows (if provided) are placed on top,
+    and data rows contain the original columns + `quality_score`.
+    """
+    if df_meta is not None and len(df_meta) > 0:
+        df_meta = df_meta.copy()
+        df_meta["quality_score"] = "META ROW"
+
+        # Ensure meta has all columns present in df_with_quality
+        for col in df_with_quality.columns:
+            if col not in df_meta.columns:
+                df_meta[col] = pd.NA
+
+        # Align column order exactly
+        df_meta = df_meta[df_with_quality.columns]
+
+        df_final = pd.concat([df_meta, df_with_quality], ignore_index=True)
+    else:
+        df_final = df_with_quality.copy()
+
+    df_final.to_excel(output_path, index=False, sheet_name=sheet_name)

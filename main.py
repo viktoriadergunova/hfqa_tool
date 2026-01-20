@@ -10,8 +10,9 @@ from etl.preprocessing import prepare_data_from_excel
 from vocab_check.apply_functional_check import add_mandatory_flags, add_range_and_allowed_flags
 from vocab_check.apply_conditional_check import apply_conditional_rules
 from quality_score.apply_u_quality_score import calculate_u_score
+from quality_score.combine_scores import combine_u_m_p_scores
 from quality_score.apply_m_quality_score import calculate_m_score
-from quality_score.combine_scores import combine_u_m_scores
+from quality_score.apply_p_flags import calculate_p_flags
 
 from utils.logging_utils import (
     setup_logging,
@@ -21,7 +22,15 @@ from utils.logging_utils import (
     log_violations,
 )
 from utils.schema_loader import load_all_schemas
-from utils.excel_writer import generate_vocab_check_comments, write_excel_with_vocab_check_comments
+from utils.excel_writer import (
+    generate_vocab_check_comments,
+    write_excel_with_vocab_check_comments,
+    generate_quality_score_column,
+    write_excel_with_quality_score,
+)
+
+
+
 from utils.json_writer import write_validation_report, write_quality_report
 
 
@@ -118,34 +127,72 @@ def run_pipeline(
 
         # Excel output
         if out_excel:
-            df_with_comments = generate_vocab_check_comments(df_checked, schema, first_data_index)
-            write_excel_with_vocab_check_comments(df_meta, df_with_comments, out_excel)
+            df_for_excel = generate_vocab_check_comments(
+                df_raw=df_raw,
+                df_checked=df_checked,
+                schema=schema,
+                meta_rows=meta_rows,
+                out_col="Validation_Comments",
+            )
+
+            write_excel_with_vocab_check_comments(df_meta=None, df_with_comments=df_for_excel, output_path=out_excel)
             log_file_written("Excel", out_excel)
+
 
     # 4) Quality mode
     elif mode == "quality":
         logging.info("Starting IHFC Quality Scoring Mode...")
+        # --- U score ---
+        df_data_typed["quality_U"] = calculate_u_score(
+            df_data_typed,
+            qc_schema=qc_schema,
+        )
 
-        # U + M (schema-driven; no extra loading here)
-        df_data_typed["quality_U"] = calculate_u_score(df_data_typed, qc_schema=qc_schema)
-        df_data_typed["quality_M"] = calculate_m_score(df_data_typed, qc_schema=qc_schema)
+        # --- M score (marine / continental routed) ---
+        df_data_typed["quality_M"] = calculate_m_score(
+            df_data_typed,
+            qc_schema=qc_schema,
+        )
 
-        # Combine into final label (e.g. U2.M3x)
-        df_data_typed = combine_u_m_scores(
+        # --- P flags (7-letter paper code) ---
+        df_data_typed["quality_P"] = calculate_p_flags(
+            df_data_typed,
+            qc_schema=qc_schema,
+        )
+
+        # --- Combine U + M + P  ---
+        df_data_typed = combine_u_m_p_scores(
             df_data_typed,
             u_col="quality_U",
             m_col="quality_M",
-            out_col="quality_Q",
-            out_rank_col="quality_rank",
+            p_col="quality_P",
+           # out_col="quality_Q",          # U2.M3x
+            out_col_with_p="quality_QP",  # U2.M3x.SxxxCxh
+           # out_rank_col="quality_rank",
             separator=".",
         )
 
-        write_quality_report(
-            df_data_typed=df_data_typed,
-            meta_rows=meta_rows,
-            start_time=start_time,
-            out_path=out_report,
-        )
+        # Excel output (quality mode): original sheet + one extra column `quality_score`
+        if out_excel:
+            df_for_excel = generate_quality_score_column(
+                df_raw=df_raw,
+                df_scored=df_data_typed,
+                meta_rows=meta_rows,
+                source_col="quality_QP",   # or "quality_Q"
+                out_col="quality_score",
+            )
+
+            write_excel_with_quality_score(df_meta, df_for_excel, out_excel)
+            log_file_written("Excel", out_excel)
+
+        if out_report:
+
+            write_quality_report(
+                df_data_typed=df_data_typed,
+                meta_rows=meta_rows,
+                start_time=start_time,
+                out_path=out_report,
+            )
 
 
 
