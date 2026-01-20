@@ -399,7 +399,8 @@ If you use this tool in your research, please cite:
 
 ## Authors
 
-- Viktoria Dergunova (GFZ) 
+- Viktoria Dergunova (GFZ)
+- Elif  Balkan-Pazvantoğlu (GFZ)
 - Saman Firdaus Chishti (GFZ / University of Potsdam)
 - Ben Norden (GFZ)
 - Florian Neumann (MARUM, University of Bremen)
@@ -420,6 +421,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
