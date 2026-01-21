@@ -260,20 +260,7 @@ We welcome contributions! Please see [ISSUEs.md](ISSUEs.md)
 ## Citation 
 
 If you use this tool in your research, please cite:
-```bibtex
-@software{chishti2025hfqa,
-  author = {Chishti, Saman F. and Balkan-Pazvantoğlu, Elif and Norden, Ben and 
-            Neumann, Florian and Elbarbary, Samah and Gross, Eskil S. and 
-            Petrunin, Alexey G. and Fuchs, Sven},
-  title = {Heat Flow Quality Analysis Toolbox (hfqa_tool)},
-  year = {2025},
-  publisher = {GFZ Data Services},
-  doi = {10.5880/fidgeo.2025.043},
-  url = {https://doi.org/10.5880/fidgeo.2025.043}
-}
-```
 
-**Reference paper:**
 ```bibtex
 @article{fuchs2023quality,
   title = {Quality-assurance of heat-flow data: The new structure and evaluation 
@@ -291,11 +278,9 @@ If you use this tool in your research, please cite:
 
 - Viktoria Dergunova (GFZ)
 - Elif  Balkan-Pazvantoğlu (GFZ)
-- Saman Firdaus Chishti (GFZ / University of Potsdam)
 - Ben Norden (GFZ)
 - Florian Neumann (MARUM, University of Bremen)
 - Samah Elbarbary (GFZ)
-- Eskil Salis Gross (GFZ)
 - Alexey G. Petrunin (GFZ)
 - Sven Fuchs (GFZ)
 
@@ -311,6 +296,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
