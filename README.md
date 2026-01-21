@@ -235,24 +235,6 @@ The final quality score combines all three components:
 The Excel output includes all original data plus an additional column:
 - **`quality_score`** - Combined quality code (e.g., `U1M2.SxxxCxh`)
 
-## Documentation
-
-## Testing
-
-Run the built-in test suite to verify functionality:
-```bash
-python main.py --run-tests
-```
-
-This executes:
-- Range validation tests
-- Obligation/mandatory field tests
-- Allowed value tests
-- Conditional rule tests
-- U-score calculation tests
-- M-score calculation tests
-- P-score calculation tests
-
 ## Contributing
 
 We welcome contributions! Please see [ISSUEs.md](ISSUEs.md) 
@@ -296,6 +278,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
