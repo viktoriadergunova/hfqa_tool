@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 from pandas.api.types import is_bool_dtype
-
+from utils.logging_utils import log_file_written
 
 def write_excel_with_vocab_check_comments(
     df_meta: pd.DataFrame | None,
@@ -33,6 +33,7 @@ def write_excel_with_vocab_check_comments(
         df_final = df_with_comments.copy()
 
     df_final.to_excel(output_path, index=False, sheet_name="Validation Results")
+    log_file_written("Excel", output_path)
 
 
 def get_col_comment(schema_dict: dict, col_name: str) -> str:
@@ -42,10 +43,6 @@ def get_col_comment(schema_dict: dict, col_name: str) -> str:
         if col_name in section_dict:
             return section_dict[col_name].get("comment", "")
     return ""
-
-
-import pandas as pd
-from pandas.api.types import is_bool_dtype
 
 
 def generate_vocab_check_comments(
@@ -167,3 +164,4 @@ def write_excel_with_quality_score(
         df_final = df_with_quality.copy()
 
     df_final.to_excel(output_path, index=False, sheet_name=sheet_name)
+    log_file_written("Excel", output_path)

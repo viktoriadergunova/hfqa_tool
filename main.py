@@ -14,13 +14,10 @@ from quality_score.combine_scores import combine_u_m_p_scores
 from quality_score.apply_m_quality_score import calculate_m_score
 from quality_score.apply_p_flags import calculate_p_flags
 
-from utils.logging_utils import (
-    setup_logging,
-    log_file_written,
-    log_vocab_validation_summary,
-    log_row_results,
-    log_violations,
-)
+
+
+from utils.logging_utils import setup_logging
+
 from utils.schema_loader import load_all_schemas
 from utils.excel_writer import (
     generate_vocab_check_comments,
@@ -33,17 +30,28 @@ from utils.excel_writer import (
 
 from utils.json_writer import write_validation_report, write_quality_report
 
+# Resolves output path for Excel or JSON report
+
+def resolve_output_path(input_path: Path, mode: str, kind: str) -> str:
+    out_dir = input_path.parent / ("vocab" if mode == "vocab" else "qc")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if kind == "excel":
+        return str(out_dir / input_path.name)
+
+    if kind == "json":
+        return str(out_dir / input_path.with_suffix(".json").name)
+
+    raise ValueError(f"Unknown kind '{kind}'")
+
 
 def run_pipeline(
     input_path: str,
-    out_report: str,
+    output_kind: str,
     mode: str,
-    sheet_name: int = 0,
+    sheet_name: int = 1, # default datalist 
     meta_rows: int = 7,
     debug_prefix: str | None = None,
-    out_excel: str | None = None,
-    log_each_row: bool = True,
-    log_each_violation: bool = True,
     include_row_results_in_json: bool = False,
 ) -> None:
     start_time = time.time()
@@ -106,32 +114,28 @@ def run_pipeline(
         df_checked = add_range_and_allowed_flags(df_checked, schema)
         df_checked = apply_conditional_rules(df_checked, cond_cfg)
 
-        if debug_prefix:
-            df_checked.to_parquet(f"{debug_prefix}_04_checked.parquet", index=False)
-
         first_data_index = int(df_checked.index.min()) if len(df_checked) > 0 else 0
 
-        summary, row_results, violations = write_validation_report(
-            df_checked=df_checked,
-            schema=schema,
-            meta_rows=meta_rows,
-            first_data_index=first_data_index,
-            df_raw=df_raw,
-            df_data_typed=df_data_typed,
-            start_time=start_time,
-            out_path=out_report,
-            include_row_results_in_json=include_row_results_in_json,
-        )
+        # JSON output (only if requested)
+        if output_kind == "json":
+            out_path = resolve_output_path(input_path, mode="vocab", kind="json")
 
-        # Console logging
-        if log_each_row:
-            log_row_results(row_results)
-        if log_each_violation:
-            log_violations(violations)
-        log_vocab_validation_summary(summary)
+            write_validation_report(
+                df_checked=df_checked,
+                schema=schema,
+                meta_rows=meta_rows,
+                first_data_index=first_data_index,
+                df_raw=df_raw,
+                df_data_typed=df_data_typed,
+                start_time=start_time,
+                out_path=out_path,
+                include_row_results_in_json=include_row_results_in_json,
+            )
 
-        # Excel output
-        if out_excel:
+        # Excel output (default)
+        if output_kind == "excel":
+            out_path = resolve_output_path(input_path, mode="vocab", kind="excel")
+
             df_for_excel = generate_vocab_check_comments(
                 df_raw=df_raw,
                 df_checked=df_checked,
@@ -140,72 +144,78 @@ def run_pipeline(
                 out_col="Validation_Comments",
             )
 
-            write_excel_with_vocab_check_comments(df_meta=None, df_with_comments=df_for_excel, output_path=out_excel)
-            log_file_written("Excel", out_excel)
+            write_excel_with_vocab_check_comments(
+                df_meta=None,
+                df_with_comments=df_for_excel,
+                output_path=out_path,
+            )
 
 
     # 4) Quality mode
     elif mode == "quality":
         logging.info("Starting IHFC Quality Scoring Mode...")
-        # --- U score ---
+
         df_data_typed["quality_U"] = calculate_u_score(
             df_data_typed,
             qc_schema=qc_schema,
         )
 
-        # --- M score (marine / continental routed) ---
         df_data_typed["quality_M"] = calculate_m_score(
             df_data_typed,
             qc_schema=qc_schema,
         )
 
-        # --- P flags (7-letter paper code) ---
         df_data_typed["quality_P"] = calculate_p_flags(
             df_data_typed,
             qc_schema=qc_schema,
         )
 
-        # --- Combine U + M + P  ---
         df_data_typed = combine_u_m_p_scores(
             df_data_typed,
             u_col="quality_U",
             m_col="quality_M",
             p_col="quality_P",
-           # out_col="quality_Q",          # U2.M3x
-            out_col_with_p="quality_QP",  # U2.M3x.SxxxCxh
-           # out_rank_col="quality_rank",
+            out_col_with_p="quality_QP",
             separator=".",
         )
 
-        # Excel output (quality mode): original sheet + one extra column `quality_score`
-        if out_excel:
-            df_for_excel = generate_quality_score_column(
-                df_raw=df_raw,
-                df_scored=df_data_typed,
-                meta_rows=meta_rows,
-                source_col="quality_QP",   # or "quality_Q"
-                out_col="quality_score",
-            )
-
-            write_excel_with_quality_score(df_meta, df_for_excel, out_excel)
-            log_file_written("Excel", out_excel)
-
-        if out_report:
+       # only ONE output is written
+        if output_kind == "json":
+            out_path = resolve_output_path(input_path, mode="quality", kind="json")
 
             write_quality_report(
                 df_data_typed=df_data_typed,
                 meta_rows=meta_rows,
                 start_time=start_time,
-                out_path=out_report,
+                out_path=out_path,
             )
 
+        else:  # excel
+            out_path = resolve_output_path(input_path, mode="quality", kind="excel")
 
+            df_for_excel = generate_quality_score_column(
+                df_raw=df_raw,
+                df_scored=df_data_typed,
+                meta_rows=meta_rows,
+                source_col="quality_QP",
+                out_col="quality_score",
+            )
+
+            write_excel_with_quality_score(
+                df_meta=df_meta,
+                df_with_quality=df_for_excel,
+                output_path=out_path,
+            )
+    
+    
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", help="Path to input Excel file")
-    parser.add_argument("--out-json", help="Path to output JSON report")
-    parser.add_argument("--out-excel", help="Path to output Excel file with validation comments")
+    
+    out_group = parser.add_mutually_exclusive_group()
+    out_group.add_argument("--out-json", action="store_true")
+    out_group.add_argument("--out-excel", action="store_true")
 
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument("--vocab-check", action="store_true", help="Run vocabulary validation")
@@ -247,16 +257,17 @@ def main():
 
     mode = "vocab" if args.vocab_check else "quality"
 
+    output_kind = "excel"
+    if args.out_json:
+        output_kind = "json"
+
     run_pipeline(
         input_path=args.input,
-        out_report=args.out_json,
         mode=mode,
+        output_kind=output_kind,
         sheet_name=args.sheet,
         meta_rows=args.meta_rows,
         debug_prefix=args.debug_prefix,
-        out_excel=args.out_excel,
-        log_each_row=not args.no_row_log,
-        log_each_violation=not args.no_violation_log,
         include_row_results_in_json=args.include_row_results_in_json,
     )
 
