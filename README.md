@@ -51,16 +51,20 @@ Row 9+:    Data rows
 
 ## Quick Start - Vocabulary Validation
 ```bash
-python main.py --vocab-check --input your_data.xlsx --out-json validation_report.json --out-excel validated_data.xlsx --meta-rows 7
+python main.py --vocab-check --input your_data.xlsx 
 ```
 **Parameters:**
 - `--vocab-check`: Run vocabulary validation mode
 - `--input`: Path to your Excel file
-- `--out-json`: Output path for JSON validation report
-- `--out-excel`: Output path for Excel file with validation comments
+- `--out-json`: Option to get .json files, saved in /voc
+- `--out-excel`: Option to get .xlsx files (default), saved in /voc folder
 - `--meta-rows`: Number of metadata rows at the top of your Excel sheet (default: 7)
-- `--sheet`: Sheet index to validate (default: 0)
-
+- `--sheet`: Sheet index to validate (default: 1)
+- 
+**Full example with all options:**
+```bash
+python main.py --input your_data.xlsx --vocab-check --out-json --sheet 1 --meta-rows 7 --debug-prefix debug_run 
+```
 ### Understanding the Output 
 #### JSON Report Structure
 ```json
@@ -145,21 +149,21 @@ The quality scoring module evaluates heat-flow data according to IHFC standards,
 
 ### Quick Start - Quality Scoring
 ```bash
-python main.py --quality-score --input your_data.xlsx --out-json quality_report.json --out-excel quality_scored.xlsx --meta-rows 7
+python main.py --quality-score --input your_data.xlsx 
 ```
 
 **Parameters:**
 - `--quality-score`: Run quality scoring mode
 - `--input`: Path to your Excel file
-- `--out-json`: Output path for JSON quality report
-- `--out-excel`: Output path for Excel file with quality scores
+- `--out-json`: Option to get .json files, saved in /voc
+- `--out-excel`: Option to get .xlsx files (default), saved in /qc folder
 - `--meta-rows`: Number of metadata rows (default: 7)
 - `--sheet`: Sheet index to process (default: 0)
 - `--debug-prefix`: Optional prefix for debug output files
 
 **Full example with all options:**
 ```bash
-python main.py --input your_data.xlsx --quality-score --out-json out_quality.json --sheet 1 --meta-rows 7 --debug-prefix debug_run --out-excel out_quality.xlsx
+python main.py --input your_data.xlsx --quality-score --out-json --sheet 1 --meta-rows 7 --debug-prefix debug_run 
 ```
 
 ### Quality Score Components
@@ -421,6 +425,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
