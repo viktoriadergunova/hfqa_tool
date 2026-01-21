@@ -96,12 +96,16 @@ The Excel output file contains all original input data and two additional column
 - **`validation_comments`** – contains column dependent error descriptions
 - Rows without validation issues have an empty `validation_comments` field.
 
-
+**Format**
 | … | P1 | P2 | P3 | row_type | validation_comments |
 |---|----|----|----|----------|---------------------|
 | … | 65.5 |    | Site-001 | data | `[MISSING] C47 (Thermal conductivity number): Required field is empty; [INVALID VALUE] C26 (Stratigraphy): Value 'late paleozoic orogeny' is not in allowed list` |
 | … | 72.3 | 5.2 | Site-002 | data |  |
 
+- **MISSING**: Required field is empty
+- **RANGE**: Value outside valid range
+- **INVALID**: Value not in vocabulary
+- **CONDITIONAL**: Context-dependent rule violated 
 
 ### Validation Types
 
@@ -131,17 +135,6 @@ Context-dependent rules based on other field values:
 - Temperature measurement method restrictions based on measurement count
 - Thermal conductivity source restrictions based on location type
 
-### Error Categories
-
-| Category | Flag Suffix | Description | Example |
-|----------|-------------|-------------|---------|
-| Missing | `__missing` | Required field is empty | `P2__missing` |
-| Range | `__out_of_range` | Value outside valid range | `P4__out_of_range` |
-| Invalid | `__invalid` | Value not in vocabulary | `P7__invalid` |
-| Conditional | `__cond_*` | Context-dependent rule violated | `C23__cond_probing_requires_c23` |
-
-
-
 
 ## Quality Scoring
 
@@ -168,11 +161,17 @@ python main.py --input your_data.xlsx --quality-score --out-json --sheet 1 --met
 
 ### Quality Score Components
 
-The quality assessment consists of three independent scores that are combined into a final quality code:
+Quality scoring is defined in `quality_score_schema.yaml. The quality assessment consists of three independent scores that are combined into a final quality code:
 
 #### 1. U-Score (Uncertainty Quantification)
 Evaluates the numerical uncertainty of heat-flow determinations based on the coefficient of variation (COV):
 
+**Calculation**
+```
+COV(%) = (Heat Flow Uncertainty / Heat Flow Mean) × 100
+```
+
+**Format**
 | Score | COV Range | Description |
 |-------|-----------|-------------|
 | U1 | < 5% | Excellent - Very low uncertainty |
@@ -181,10 +180,6 @@ Evaluates the numerical uncertainty of heat-flow determinations based on the coe
 | U4 | > 25% | Poor - High uncertainty |
 | Ux | N/A | Not determined / missing data |
 
-**Calculation:**
-```
-COV(%) = (Heat Flow Uncertainty / Heat Flow Mean) × 100
-```
 
 #### 2. M-Score (Methodological Quality)
 Assesses the quality of measurement methods for both temperature gradient and thermal conductivity determinations. The evaluation differs for borehole/mine data versus probe-sensing data.
@@ -199,6 +194,7 @@ Assesses the quality of measurement methods for both temperature gradient and th
 - Assesses water depth and probe tilt
 - Considers thermal conductivity measurement location and method
 
+**Format**
 | Score | Quality Range | Description |
 |-------|---------------|-------------|
 | M1 | ≥ 0.75 | Excellent methodology |
@@ -207,12 +203,6 @@ Assesses the quality of measurement methods for both temperature gradient and th
 | M4 | < 0.25 | Poor methodology |
 | M*x | Any | Incomplete metadata (x-suffix indicates missing data) |
 
-**Example M-Score Calculation:**
-Starting from base value 1.0, penalties are applied based on:
-- Temperature measurement type and quality
-- Thermal conductivity source and measurement conditions
-- Number of measurements
-- Pressure/temperature corrections
 
 #### 3. P-Flags (Perturbation Effects)
 A 7-character code indicating the status of environmental perturbations that may affect heat-flow measurements:
@@ -235,7 +225,7 @@ Each position represents a specific perturbation:
 - **Lowercase `x`** = **Not recognized** or not present
 - **Dash `-`** = Unspecified/missing data
 
-**Examples:**
+**Format:**
 - `SxxxCxh` = Sedimentation corrected, convection not recognized, heat refraction present but not corrected
 - `SETPV--` = Multiple effects corrected, convection and heat refraction unspecified
 - `-------` = All perturbations unspecified
@@ -244,9 +234,7 @@ Each position represents a specific perturbation:
 
 The final quality score combines all three components:
 
-**Format:** `U[1-4]M[1-4][x].P-FLAGS`
-
-**Examples:**
+**Format::**
 - `U1M1.SxxxCxh` - Excellent uncertainty, excellent methodology, specific perturbations
 - `U2M3x.-------` - Good uncertainty, acceptable methodology with missing metadata, unspecified perturbations
 - `U3M2.SETPVXR` - Acceptable uncertainty, good methodology, multiple perturbations addressed
@@ -286,47 +274,6 @@ The final quality score combines all three components:
 #### Excel Output
 The Excel output includes all original data plus an additional column:
 - **`quality_score`** - Combined quality code (e.g., `U1M2.SxxxCxh`)
-
-### Quality Score Schema
-
-Quality scoring behavior is defined in `quality_score_schema.yaml`:
-
-**U-Score Configuration:**
-- Threshold values for uncertainty classes
-- Calculation method (coefficient of variation)
-
-**M-Score Configuration:**
-- Penalties for different measurement methods
-- Borehole vs. probe-sensing evaluation criteria
-- Required metadata fields
-
-**P-Flags Configuration:**
-- Perturbation field mappings (C13-C19)
-- Encoding rules for each perturbation type
-- Letter assignments for each effect
-
-### Interpreting Results
-
-**High-Quality Determinations:**
-- U1 or U2 (low uncertainty)
-- M1 or M2 (good methodology)
-- Perturbations corrected (uppercase letters in P-flags)
-
-**Use with Caution:**
-- U3 or U4 (high uncertainty)
-- M3 or M4 (questionable methodology)
-- M-score with 'x' suffix (incomplete metadata)
-- Uncorrected perturbations (lowercase letters in P-flags)
-
-**Example Quality Assessment:**
-
-| Score | Interpretation |
-|-------|----------------|
-| `U1M1.SxxxCxh` | **Excellent** - Low uncertainty, best methodology, sedimentation corrected |
-| `U2M2.SETPVXR` | **Very Good** - Low uncertainty, good methodology, most perturbations addressed |
-| `U3M3x.-------` | **Questionable** - Moderate uncertainty, acceptable but incomplete methodology, perturbations unknown |
-| `U4M4.sePvch` | **Poor** - High uncertainty, poor methodology, uncorrected perturbations |
-
 
 ## Documentation
 
@@ -425,6 +372,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
