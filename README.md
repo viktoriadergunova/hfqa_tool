@@ -48,7 +48,6 @@ Row 8:     Column headers (ID, Level, Obligation, P1, P2, P3, ...)
 Row 9+:    Data rows
 ```
 
-
 ## Quick Start - Vocabulary Validation
 ```bash
 python main.py --vocab-check --input your_data.xlsx 
@@ -107,35 +106,6 @@ The Excel output file contains all original input data and two additional column
 - **INVALID**: Value not in vocabulary
 - **CONDITIONAL**: Context-dependent rule violated 
 
-### Validation Types
-
-#### 1. Functional Validation
-Basic data quality checks performed on all data:
-
-**Missing Value Checks**
-- Validates that all mandatory (M) fields contain values
-- Example: `P2` (HF Uncertainty) must not be empty
-
-**Range Validation**
-- Ensures numeric values fall within acceptable bounds
-- Example: Latitude (`P4`) must be between -90.0 and 90.0
-
-**Allowed Value Validation**
-- Checks that values match controlled vocabularies
-- Example: `P7` (Location Type) must be one of `[Onshore (continental)]`, `[Offshore (marine)]`, etc.
-
-#### 2. Conditional Validation
-Context-dependent rules based on other field values:
-
-**Method-Specific Requirements**
-- If exploration method (`P12`) is `[Probing (...)]`, then probe tilt (`C23`) is mandatory
-- If thermal conductivity measurement type is specified, corresponding method columns must be valid
-
-**Cross-Field Logic**
-- Temperature measurement method restrictions based on measurement count
-- Thermal conductivity source restrictions based on location type
-
-
 ## Quality Scoring
 
 The quality scoring module evaluates heat-flow data according to IHFC standards, providing a comprehensive assessment through three independent components:
@@ -161,7 +131,7 @@ python main.py --input your_data.xlsx --quality-score --out-json --sheet 1 --met
 
 ### Quality Score Components
 
-Quality scoring is defined in `quality_score_schema.yaml. The quality assessment consists of three independent scores that are combined into a final quality code:
+The quality assessment consists of three independent scores that are combined into a final quality code:
 
 #### 1. U-Score (Uncertainty Quantification)
 Evaluates the numerical uncertainty of heat-flow determinations based on the coefficient of variation (COV):
@@ -183,16 +153,6 @@ COV(%) = (Heat Flow Uncertainty / Heat Flow Mean) × 100
 
 #### 2. M-Score (Methodological Quality)
 Assesses the quality of measurement methods for both temperature gradient and thermal conductivity determinations. The evaluation differs for borehole/mine data versus probe-sensing data.
-
-**Borehole/Mine Data:**
-- Evaluates temperature method (equilibrium vs. perturbed measurements)
-- Assesses thermal conductivity source and measurement conditions
-- Considers number of measurements and in-situ conditions
-
-**Probe-Sensing Data:**
-- Evaluates penetration depth and number of temperature points
-- Assesses water depth and probe tilt
-- Considers thermal conductivity measurement location and method
 
 **Format**
 | Score | Quality Range | Description |
@@ -277,27 +237,6 @@ The Excel output includes all original data plus an additional column:
 
 ## Documentation
 
-### Schema Files
-
-The validation behavior is defined in YAML schema files:
-
-- **`hf_schema.yaml`**: Main data structure and functional validation rules
-- **`conditional_rules.yaml`**: Context-dependent validation logic
-- **`quality_score_schema.yaml`**: Quality score calculation rules
-
-### Column Reference
-
-Full documentation of all data fields is available in the schema files. Key field groups:
-
-**Parent Level (P1-P13)**: Site-level information
-- Location coordinates, elevation, exploration method, etc.
-
-**Child Level (C1-C49)**: Determination-level information
-- Heat flow value, uncertainty, measurement methods, thermal conductivity, etc.
-
-**Admin Level (A1-A8)**: Administrative metadata
-- Reviewer information, geographic classification, etc.
-
 ## Testing
 
 Run the built-in test suite to verify functionality:
@@ -372,6 +311,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
