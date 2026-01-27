@@ -2,5 +2,6 @@ pandas>=2.0
 pyarrow
 openpyxl
 pyyaml
-xlsxwriter
 pytest
+pytest-cov
+#pytest --html=report.html
