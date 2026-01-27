@@ -943,13 +943,13 @@ columns:
 
   C33: 
     dtype: float64 
-    range: [0.0, 99.99]       
+    range: [0.0, 99999.0]       
     obligation: "R" 
     comment: "Shut-in time (top)"
 
   C34:  
     dtype: float64 
-    range: [0.0, 99.99]        
+    range: [0.0, 99999.0]        
     obligation: "R" 
     comment: "Shut-in time (bottom)"
     
@@ -987,7 +987,7 @@ columns:
 
   C37:
     dtype: int64
-    range: [0, 9999]
+    range: [0, 999999]
     obligation: "R"
     comment: "Number of temperature measurements"
 
@@ -1151,8 +1151,8 @@ columns:
     comment: "Thermal conductivity assumed functions"
 
   C47:
-    dtype: float64
-    range: [0.0, 99.999]
+    dtype: int64
+    range: [0, 9999]
     obligation: "M"
     comment: "Thermal conductivity number"
 
