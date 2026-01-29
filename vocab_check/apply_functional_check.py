@@ -27,7 +27,6 @@ def add_mandatory_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 
     return df
 
-
 def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     df = df.copy()
 
@@ -36,9 +35,6 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     else:
         data_mask = pd.Series(True, index=df.index)
 
-    norm_cfg = schema.get("normalization", {})
-    global_string_norm = norm_cfg.get("string", {})
-
     for col_name, col_spec in _iter_schema_specs(schema):
         if col_name not in df.columns:
             continue
@@ -46,19 +42,18 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
         s = df[col_name]
         dtype_str = str(col_spec.get("dtype", "")).strip().lower()
 
-        # ---------- DATATYPE CHECK ----------
         expected_type = None
         if "float" in dtype_str:
             expected_type = float
         elif "int" in dtype_str:
             expected_type = int
 
+        # ---------- DATATYPE CHECK ----------
         if expected_type:
             def is_invalid_type(x):
-                if pd.isna(x):  # Allow NaN
+                if pd.isna(x):
                     return False
                 try:
-                    # Enforce strict type matching
                     if expected_type == int and isinstance(x, float) and not x.is_integer():
                         return True
                     expected_type(x)
@@ -67,6 +62,17 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
                     return True
 
             cond = data_mask & s.apply(is_invalid_type)
+            df[f"{col_name}__invalid_dtype"] = cond
+
+        elif dtype_str == "string":
+            def is_invalid_string(x):
+                if isinstance(x, (list, dict, set, tuple)):
+                    return True
+                if pd.isna(x):
+                    return False
+                return not isinstance(x, str)
+
+            cond = data_mask & s.apply(is_invalid_string)
             df[f"{col_name}__invalid_dtype"] = cond
 
         # ---------- RANGE CHECK ----------
@@ -80,16 +86,27 @@ def add_range_and_allowed_flags(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
         # ---------- ALLOWED-VALUE CHECK ----------
         allowed_raw = col_spec.get("allowed")
         if allowed_raw is not None:
-            allowed_set = set(allowed_raw)
-            s_str = s.astype("string").str.strip().str.lower()
+            allowed_set = set(a.strip().lower() for a in allowed_raw)
             multi_choice = bool(col_spec.get("multi_choice", False))
             sep = col_spec.get("separator", ";")
 
+            def normalize(val):
+                if isinstance(val, str):
+                    return val.strip().lower()
+                return val
+
+            s_str = s.apply(normalize)
+
             if multi_choice:
                 def invalid_multi(val):
+                    if isinstance(val, (list, dict, set, tuple)):
+                        return True  # clearly not a string
                     if pd.isna(val):
-                        return False
-                    parts = [p.strip() for p in str(val).split(sep) if p.strip()]
+                        return False  # missing is not invalid
+                    if not isinstance(val, str):
+                        return True  # not string = invalid
+
+                    parts = [p.strip() for p in val.split(sep) if p.strip()]
                     return any(p not in allowed_set for p in parts)
 
                 cond = data_mask & s_str.notna() & s_str.apply(invalid_multi)
