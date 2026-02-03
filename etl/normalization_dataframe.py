@@ -1,114 +1,68 @@
-
 import pandas as pd
-import re
-
-def normalize_vocabulary_series(s: pd.Series) -> pd.Series:
-    """
-    Normalize bracketed vocabulary entries, including multi-valued cells.
-    """
-    s = s.astype("string")
-
-    def _norm_value(val):
-        if val is None or pd.isna(val):
-            return pd.NA
-
-        text = str(val).strip()
-        if not text:
-            return pd.NA
-
-        # split multi entries on ';'
-        parts = [p.strip() for p in text.split(";") if p.strip()]
-        norm_parts = []
-
-        for p in parts:
-            p = p.lower().strip()
-
-            # remove outer brackets if present
-            if p.startswith("[") and p.endswith("]"):
-                p = p[1:-1].strip()
-
-            # normalize separators inside the token: space, comma, slash -> dash
-            p = re.sub(r"[ ,/]+", "-", p)
-            # collapse multiple dashes
-            p = re.sub(r"-{2,}", "-", p)
-            # remove spaces around parentheses and dashes
-            p = re.sub(r"\s*\(\s*", "(", p)
-            p = re.sub(r"\s*\)\s*", ")", p)
-            p = re.sub(r"\s*-\s*", "-", p)
-
-            # wrap back in brackets
-            norm_parts.append(f"[{p}]")
-
-        return ";".join(norm_parts) if norm_parts else pd.NA
-
-    return s.map(_norm_value)
+from etl.normalization_utils import normalize_bracketed_token_series
 
 
 def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
+    """
+    Normalize all string and numeric fields in the DataFrame based on the schema rules.
+    """
+    df = df.copy()
     norm_cfg = schema.get("normalization", {})
     global_string_norm = norm_cfg.get("string", {})
     global_numeric_norm = norm_cfg.get("numeric", {})
-
-    df = df.copy()
 
     for col_name, col_spec in schema.get("columns", {}).items():
         if col_name not in df.columns:
             continue
 
-        dtype = str(col_spec.get("dtype", ""))
-
-        # --- globale + spaltenspezifische String-Norm zusammenführen ---
+        dtype = str(col_spec.get("dtype", "")).lower()
         col_norm = col_spec.get("normalization", {})
         effective_string_norm = global_string_norm.copy()
         effective_string_norm.update(col_norm)
 
-        # ---------- STRING (inkl. list[string] als Textbasis) ----------
-        if "string" in dtype:
-            s = df[col_name].astype("string")
+        s = df[col_name]
 
-            # missing tokens
+        # ---------- STRING ----------
+        if "string" in dtype:
+            s = s.astype("string")
+
+            # 1. Handle missing tokens
             missing_tokens = effective_string_norm.get("missing_tokens", [])
             if missing_tokens:
                 s = s.replace(missing_tokens, pd.NA)
 
-            # trim / whitespace
+            # 2. Basic string cleanup
             if effective_string_norm.get("trim", False):
                 s = s.str.strip()
-
             if effective_string_norm.get("collapse_space", False):
                 s = s.str.replace(r"\s+", " ", regex=True)
 
-            # Separator-Normalisierung (z.B. für multi_choice Felder)
+            # 3. Separator normalization
             if effective_string_norm.get("normalize_separator", False):
                 s = s.str.replace(",", ";", regex=False)
 
-            # case-insensitive: alles auf lowercase
+            # 4. Lowercasing
             if effective_string_norm.get("case_insensitive", False):
                 s = s.str.lower()
 
-            # spezielle Dash-Normalisierung (z.B. C38)
+            # 5. Replace dash characters (e.g. EM dash)
             if "replace_dash" in effective_string_norm:
                 dash_char = effective_string_norm["replace_dash"]
                 s = s.str.replace(dash_char, "-", regex=False)
 
-            # --- entscheiden, ob Vokabular-Norm mit Klammern nötig ist ---
+            # 6. Bracketed token normalization
             allowed = col_spec.get("allowed")
-            has_bracketed_allowed = bool(allowed) and any(
-                "[" in str(a) or "]" in str(a) for a in allowed
-            )
-            enforce_brackets = bool(effective_string_norm.get("enforce_brackets", False))
+            has_bracketed_allowed = bool(allowed) and any("[" in str(a) or "]" in str(a) for a in allowed)
+            enforce_brackets = effective_string_norm.get("enforce_brackets", False)
 
-            # Nur wenn:
-            #  - global/column enforce_brackets True ODER
-            #  - allowed-Werte selbst Klammern enthalten
             if enforce_brackets or has_bracketed_allowed:
-                s = normalize_vocabulary_series(s)
+                s = normalize_bracketed_token_series(s)
 
             df[col_name] = s
 
         # ---------- NUMERIC ----------
         elif "float" in dtype or "int" in dtype:
-            s = df[col_name].astype("string")
+            s = s.astype("string")
 
             missing_tokens = global_numeric_norm.get("missing_tokens", [])
             if missing_tokens:
@@ -126,6 +80,10 @@ def normalize_dataframe(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
 
 
 def normalize_only_data_rows(df: pd.DataFrame, schema: dict):
+    """
+    Normalize only the 'data' rows in the DataFrame, preserving 'meta' rows as-is.
+    Returns a tuple of (meta_df, normalized_data_df), or (None, df) if no row_type exists.
+    """
     df = df.copy()
 
     if "row_type" not in df.columns:
