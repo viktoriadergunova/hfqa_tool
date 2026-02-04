@@ -13,7 +13,7 @@ def _find_schema_path() -> Path:
         candidate = p / "schemas" / "hf_schema.yaml"
         if candidate.exists():
             return candidate
-    raise FileNotFoundError("Could not locate schemas/hf_schema.yaml by walking up from the test file path.")
+    raise FileNotFoundError("Could not locate schemas/hf_schema.yaml")
 
 
 @pytest.fixture(scope="session")
