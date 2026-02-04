@@ -1,5 +1,12 @@
 import pandas as pd
 
+import pandas as pd
+from pandas.api.types import (
+    is_integer_dtype,
+    is_float_dtype,
+    is_string_dtype,
+    is_datetime64_any_dtype,
+)
 
 def _iter_schema_specs(schema: dict):
     """Combine 'core' and 'columns' specs into one iterator."""
@@ -52,27 +59,35 @@ def apply_schema_types(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     return df_combined
 
 
+
 def verify_schema_types(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
     """Return a DataFrame summarizing dtype verification."""
     rows = []
-    for col_name, col_spec in _iter_schema_specs(schema):
+
+    for col_name, col_spec in schema.get("columns", {}).items():
         if col_name not in df.columns:
-            rows.append((col_name, col_spec.get("dtype", ""), "MISSING"))
+            rows.append((col_name, col_spec.get("dtype", ""), None, "MISSING"))
             continue
 
         expected = str(col_spec.get("dtype", "")).strip().lower()
-        actual = str(df[col_name].dtype).lower()
+        series = df[col_name]
 
-        match = (
-            ("float" in expected and "float" in actual)
-            or ("int" in expected and "int" in actual)
-            or ("string" in expected and "string" in actual)
-            or (("timestamp" in expected or "datetime" in expected) and "datetime" in actual)
-            or ("list[" in expected and "string" in actual)
-        )
+        # Semantic type checking
+        if "int" in expected:
+            match = is_integer_dtype(series)
+        elif "float" in expected:
+            match = is_float_dtype(series)
+        elif "string" in expected or "list[" in expected:
+            match = is_string_dtype(series)
+        elif "date" in expected or "datetime" in expected:
+            match = is_datetime64_any_dtype(series)
+        else:
+            match = False
 
+        actual_dtype = str(series.dtype)
         status = "OK" if match else "WARN"
-        rows.append((col_name, expected, actual, status))
+        rows.append((col_name, expected, actual_dtype, status))
+        
 
     result = pd.DataFrame(rows, columns=["column", "expected", "actual", "status"])
     return result
