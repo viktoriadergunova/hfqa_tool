@@ -89,10 +89,10 @@ m_score:
           when: {}
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[BHT]", "[DST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"]
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[BHT]", "[cDTS]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"]
               penalty: -0.1
             perturbed:
-              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DST]", "[RTDpert]", "[BLK]"]
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[cDTS]", "[RTDpert]", "[BLK]"]
               penalty: -0.3
             estimated:
               methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
@@ -105,10 +105,10 @@ m_score:
               value: "[SUR]"
           rules:
             equilibrium_or_corrected:
-              C32_methods_any_of: ["[cBHT]", "[cDST]", "[RTDeq]", "[RTDc]", "[ODTT-PC]", "[ODTT-TP]"]
+              C32_methods_any_of: ["[cBHT]", "[cDTS]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"]
               penalty: -0.3
             perturbed:
-              C32_methods_any_of: ["[BHT]", "[DST]", "[RTDpert]"]
+              C32_methods_any_of: ["[BHT]", "[cDTS]", "[RTDpert]"]
               penalty: -0.5
             estimated:
               C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]

@@ -932,7 +932,6 @@ columns:
       - "[ODTT-TP]"
       - "[GRT]"
       - "[EGRT]"
-      - "[SUR]"
       - "[unspecified]"
       - "[Other (specify in comments)]"
     obligation: "M"
