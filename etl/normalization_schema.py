@@ -1,3 +1,5 @@
+# etl/normalization_schema.py
+
 import copy
 import pandas as pd
 
@@ -17,6 +19,9 @@ def normalize_allowed_values(allowed_values, col_spec: dict, global_string_norm:
       - column enforce_brackets is True, or
       - global enforce_brackets is True, or
       - allowed values already contain bracketed tokens
+
+    NOTE: Returns a SET on purpose (dedupe). Ordering is enforced in normalize_schema()
+    via sorted(...), to guarantee deterministic/idempotent output.
     """
     if allowed_values is None:
         return set()
@@ -43,7 +48,12 @@ def normalize_schema(schema: dict) -> dict:
       - heatflow schema (columns/core/conditions)
       - quality_score schema (m_score blocks)
       - top-level conditional_rules.yaml format (when/target/params/require)
+
     Returns a normalized deep copy (does not mutate the input).
+
+    IMPORTANT:
+      - To make output deterministic and idempotent, any "allowed" lists that pass
+        through set() are written back as sorted(list).
     """
     schema = copy.deepcopy(schema)
 
@@ -52,7 +62,7 @@ def normalize_schema(schema: dict) -> dict:
 
     def _normalize_when_block(when: dict) -> None:
         """
-        Normalize a {col: {op,value}} (new) or {col: "legacy"} (old) when/apply_only_if dict.
+        Normalize a {col: {op,value}} (m_score) when/apply_only_if dict.
         Only normalizes string 'value' fields and legacy string expressions.
         """
         if not isinstance(when, dict):
@@ -122,16 +132,18 @@ def normalize_schema(schema: dict) -> dict:
                 _normalize_when_block(when_all)
 
     # -----------------------------
-    # Normalize columns/core allowed
+    # Normalize columns/core allowed (deterministic ordering!)
     # -----------------------------
     for section in ("columns", "core"):
         for _, col_spec in schema.get(section, {}).items():
             allowed = col_spec.get("allowed")
             if allowed is not None:
-                col_spec["allowed"] = list(normalize_allowed_values(allowed, col_spec, global_string_norm))
+                col_spec["allowed"] = sorted(
+                    normalize_allowed_values(allowed, col_spec, global_string_norm)
+                )
 
     # -----------------------------
-    # Normalize generic conditions
+    # Normalize generic conditions (heatflow schema)
     # -----------------------------
     if "conditions" in schema:
         for cond in schema["conditions"]:
@@ -145,7 +157,7 @@ def normalize_schema(schema: dict) -> dict:
                         cond[key][col] = normalize_token(val)
 
     # -----------------------------
-    # Normalize top-level conditional_rules (rules-file format)
+    # Normalize top-level conditional_rules.yaml (rules-file format)
     # -----------------------------
     rules = schema.get("conditional_rules")
     if isinstance(rules, list):
@@ -153,7 +165,6 @@ def normalize_schema(schema: dict) -> dict:
             if not isinstance(r, dict):
                 continue
 
-            # ---- when ----
             when = r.get("when")
             if isinstance(when, dict):
                 if isinstance(when.get("column"), str):
@@ -169,32 +180,20 @@ def normalize_schema(schema: dict) -> dict:
                 if isinstance(when.get("columns"), list):
                     when["columns"] = [str(c).strip() for c in when["columns"]]
 
-            # ---- target ----
             target = r.get("target")
             if isinstance(target, dict):
                 if isinstance(target.get("column"), str):
                     target["column"] = target["column"].strip()
-                if isinstance(target.get("separator"), str):
-                    target["separator"] = target["separator"].strip()
-
-                # IMPORTANT: treat target.allowed like schema allowed-values (series normalizer)
                 if isinstance(target.get("allowed"), list):
-                    target["allowed"] = list(
-                        normalize_allowed_values(
-                            target["allowed"],
-                            col_spec={"normalization": {"enforce_brackets": True}},
-                            global_string_norm=global_string_norm,
-                        )
-                    )
+                    target_allowed = [normalize_token(v) for v in target["allowed"]]
+                    target["allowed"] = sorted(target_allowed)  # deterministic
 
-            # ---- params ----
             params = r.get("params")
             if isinstance(params, dict):
                 for k, v in list(params.items()):
                     if k.endswith("_tokens") and isinstance(v, list):
                         params[k] = [normalize_token(x) for x in v]
 
-            # ---- require ----
             req = r.get("require")
             if isinstance(req, list):
                 for item in req:
