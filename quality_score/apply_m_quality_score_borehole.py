@@ -1,4 +1,4 @@
-# quality_score/apply_m_quality_score.py
+# quality_score/apply_m_quality_score_borehole.py
 from __future__ import annotations
 
 import math
@@ -6,9 +6,9 @@ from typing import Any
 
 import pandas as pd
 
+_SEPS = (";", ",")
 
-_SEPS = (";", ",", "|")
-
+# Explicit tokens that already encode "unspecified" (penalty applies, but should not trigger suffix x)
 _EXPLICIT_UNSPEC_TOKENS = {
     "[unspecified]",
     "[literature/unspecified]",
@@ -20,8 +20,15 @@ def _is_nan(x: Any) -> bool:
     return x is None or (isinstance(x, float) and math.isnan(x))
 
 
-def _as_num(s: pd.Series) -> pd.Series:
-    return pd.to_numeric(s, errors="coerce")
+def _col_as_num(df: pd.DataFrame, col: str) -> pd.Series:
+    """
+    Safe numeric column accessor:
+    - if col missing -> all-NaN series (so gate/missing logic can work in unit tests)
+    - else -> numeric coercion
+    """
+    if col not in df.columns:
+        return pd.Series([math.nan] * len(df), index=df.index)
+    return pd.to_numeric(df[col], errors="coerce")
 
 
 def _split_tokens(cell: Any) -> set[str]:
@@ -101,13 +108,16 @@ def _eval_when(cond: Any, cell_value: Any) -> bool:
 
 def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     """
-    Borehole-only M-score, no inheritance, no vocabulary normalization here.
+    Borehole-only M-score.
     Assumes df values already normalized upstream.
-    Multi-entry supported via splitting on ; , 
 
+    Key behaviors:
+      - multi-entry supported via splitting on ';' and ','
       - mapping blocks: use worst (minimum) penalty among matched tokens
       - temperature rules: use worst (most negative) penalty among matched rules
-      - missing suffix ("x") only if something is truly missing/unresolvable (not merely "unspecified" tokens)
+      - missing suffix ("x") only if something is truly missing/unresolvable
+        (NOT merely because explicit "[unspecified]" was provided)
+      - gate: missing C4/C5 -> fixed score + always x
     """
     m_cfg = qc_schema["m_score"]
     calc = m_cfg["calculation"]
@@ -128,11 +138,11 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     col_tc_sat = calc["tc_saturation_col"]      # C44
     col_tc_pt = calc["tc_pT_conditions_col"]    # C45
 
-    # numeric series
-    T_n = _as_num(df[col_T_n])
-    q_top = _as_num(df[col_q_top])
-    q_bot = _as_num(df[col_q_bot])
-    tc_n = _as_num(df[col_tc_n])
+    # numeric series (SAFE even if columns are missing)
+    T_n = _col_as_num(df, col_T_n)
+    q_top = _col_as_num(df, col_q_top)
+    q_bot = _col_as_num(df, col_q_bot)
+    tc_n = _col_as_num(df, col_tc_n)
 
     bh = m_cfg["borehole_logic"]
     t_logic = bh["temperature"]
@@ -159,7 +169,7 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     def _worst_matched_penalty(tokens: set[str], mapping: dict[str, float]) -> tuple[float, bool]:
         """
         For mapping blocks: return (penalty, missing_flag)
-        - if any tokens match: return min(penalties_of_matches), missing=False
+        - if any tokens match: return min(matched penalties), missing=False
         - if none match: return worst penalty; missing=True only if not explicitly unspecified
         """
         matched = [float(mapping[t]) for t in tokens if t in mapping]
@@ -178,7 +188,7 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         """
         For temperature rules:
           - if any rule matches: return worst penalty among matched rules, missing=False
-          - if none matches: return None, missing=True
+          - if none matches: return None, missing=True (caller decides if explicit unspecified cancels missing)
         """
         matched_penalties: list[float] = []
         for _, rule in rules.items():
@@ -196,12 +206,18 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
             return None, True
         return min(matched_penalties), False  # most negative = worst
 
+    def _pen_none_means_missing(top: set[str], bot: set[str]) -> bool:
+        """
+        If no rule matched, we only want 'x' if the row didn't explicitly say 'unspecified'.
+        """
+        return not _has_explicit_unspecified(top | bot)
+
     def apply_temperature(i) -> tuple[float, bool]:
         score = float(t_logic.get("start_value", 1.0))
         has_missing = False
 
-        top = _split_tokens(df.at[i, col_T_top])
-        bot = _split_tokens(df.at[i, col_T_bot])
+        top = _split_tokens(df.at[i, col_T_top]) if col_T_top in df.columns else set()
+        bot = _split_tokens(df.at[i, col_T_bot]) if col_T_bot in df.columns else set()
         nT = T_n.at[i]
 
         # -------------------------
@@ -209,7 +225,8 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         # -------------------------
         case3 = cases["one_single_point_plus_surface_T"]
         case3_when = case3.get("when", {}).get("C31_T_method_top")
-        is_case3 = _eval_when(case3_when, df.at[i, col_T_top]) if case3_when else (sur_tok in top)
+        cell_top = df.at[i, col_T_top] if col_T_top in df.columns else None
+        is_case3 = _eval_when(case3_when, cell_top) if case3_when else (sur_tok in top)
 
         if is_case3:
             rules = case3["rules"]
@@ -221,16 +238,16 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
                 match_bot_only=True,
             )
             if pen is None:
-                # unresolvable -> max penalty + x
                 score += min(float(r["penalty"]) for r in rules.values())
-                has_missing = True
+                if _pen_none_means_missing(top, bot):
+                    has_missing = True
             else:
                 score += float(pen)
             return score, has_missing
 
         # -------------------------
-        # Case 1: continuous log (paper-conform)
-        # Only if C37>3 AND method is actually one of the continuous-log methods.
+        # Case 1: continuous log
+        # Only if C37>3 AND method is one of the continuous-log methods.
         # -------------------------
         cont_case = cases["continuous_log"]
         cond = cont_case.get("when", {}).get("C37_T_number")
@@ -246,10 +263,11 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
 
         if is_cont:
             rules = cont_case["rules"]
-            pen, _ = _worst_rule_penalty(top=top, bot=bot, rules=rules, methods_key="methods_any_of", match_bot_only=False)
+            pen, _ = _worst_rule_penalty(top=top, bot=bot, rules=rules, methods_key="methods_any_of")
             if pen is None:
                 score += min(float(r["penalty"]) for r in rules.values())
-                has_missing = True
+                if _pen_none_means_missing(top, bot):
+                    has_missing = True
             else:
                 score += float(pen)
             return score, has_missing
@@ -259,10 +277,11 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         # -------------------------
         case2 = cases["multiple_single_T_points"]
         rules = case2["rules"]
-        pen, _ = _worst_rule_penalty(top=top, bot=bot, rules=rules, methods_key="methods_any_of", match_bot_only=False)
+        pen, _ = _worst_rule_penalty(top=top, bot=bot, rules=rules, methods_key="methods_any_of")
         if pen is None:
             score += min(float(r["penalty"]) for r in rules.values())
-            has_missing = True
+            if _pen_none_means_missing(top, bot):
+                has_missing = True
         else:
             score += float(pen)
 
@@ -277,10 +296,10 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
             fixed = float(tc_logic["gate_interval_depth_reported"]["if_missing"]["tc_score_fixed"])
             return fixed, True  # gate missing -> always x
 
-        loc = _split_tokens(df.at[i, col_tc_loc])
-        src = _split_tokens(df.at[i, col_tc_src])
-        sat = _split_tokens(df.at[i, col_tc_sat])
-        pt = _split_tokens(df.at[i, col_tc_pt])
+        loc = _split_tokens(df.at[i, col_tc_loc]) if col_tc_loc in df.columns else set()
+        src = _split_tokens(df.at[i, col_tc_src]) if col_tc_src in df.columns else set()
+        sat = _split_tokens(df.at[i, col_tc_sat]) if col_tc_sat in df.columns else set()
+        pt = _split_tokens(df.at[i, col_tc_pt]) if col_tc_pt in df.columns else set()
         nC = tc_n.at[i]
 
         # Block 1: location
@@ -298,7 +317,8 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         # Block 3: number_of_conductivities (respect apply_only_if)
         num_block = blocks["number_of_conductivities"]
         ao = num_block.get("apply_only_if", {}).get("C42_tc_location")
-        do_apply = _eval_when(ao, df.at[i, col_tc_loc]) if ao else (lit_tok not in loc)
+        cell_loc = df.at[i, col_tc_loc] if col_tc_loc in df.columns else None
+        do_apply = _eval_when(ao, cell_loc) if ao else (lit_tok not in loc)
 
         if do_apply:
             mapping = num_block["mapping"]

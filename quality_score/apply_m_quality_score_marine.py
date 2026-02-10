@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-_SEPS = (";", ",", "|")
+_SEPS = (";", ",")
 
 # Explicit tokens that already encode "unspecified" (penalty applies, but should not trigger suffix x)
 _EXPLICIT_UNSPEC_TOKENS = {
