@@ -103,9 +103,8 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     """
     Borehole-only M-score, no inheritance, no vocabulary normalization here.
     Assumes df values already normalized upstream.
-    Multi-entry supported via splitting on ; , |.
+    Multi-entry supported via splitting on ; , 
 
-    Conservative behavior:
       - mapping blocks: use worst (minimum) penalty among matched tokens
       - temperature rules: use worst (most negative) penalty among matched rules
       - missing suffix ("x") only if something is truly missing/unresolvable (not merely "unspecified" tokens)

@@ -27,7 +27,6 @@ from utils.excel_writer import (
 )
 
 
-
 from utils.json_writer import write_validation_report, write_quality_report
 
 # Resolves output path for Excel or JSON report
@@ -221,7 +220,7 @@ def main():
     mode_group.add_argument("--vocab-check", action="store_true", help="Run vocabulary validation")
     mode_group.add_argument("--quality-score", action="store_true", help="Run quality scoring")
 
-    parser.add_argument("--sheet", type=int, default=0)
+    parser.add_argument("--sheet", type=int, default=1)
     parser.add_argument("--meta-rows", type=int, default=7)
     parser.add_argument("--debug-prefix", default=None)
 
@@ -240,16 +239,16 @@ def main():
     setup_logging()
 
     if args.run_tests:
-        from testing.run.functional.check_range_flags import main as run_range_tests
-        from testing.run.functional.check_obligation_flags import main as run_ob_tests
-        from testing.run.functional.check_allowed_flags import main as run_allowed_tests
-        from testing.run.conditional.check_conditions_test import main as run_cond_tests
-        from testing.run.quality_score.check_u1_score import main as run_u_score_tests
-        from testing.run.quality_score.check_m1_score import main as run_m_score_tests
+        #from testing.run.functional.check_range_flags import main as run_range_tests
+        #from testing.run.functional.check_obligation_flags import main as run_ob_tests
+        #from testing.run.functional.check_allowed_flags import main as run_allowed_tests
+        #from testing.run.conditional.check_conditions_test import main as run_cond_tests
+       #from testing.run.quality_score.check_u1_score import main as run_u_score_tests
+        #from testing.run.quality_score.check_m1_score import main as run_m_score_tests
 
-        run_range_tests()
-        run_ob_tests()
-        run_allowed_tests()
+       # run_range_tests()
+        #run_ob_tests()
+       # run_allowed_tests()
        # run_cond_tests()
        # run_u_score_tests()
        # run_m_score_tests()

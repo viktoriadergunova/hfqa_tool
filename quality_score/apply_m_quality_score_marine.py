@@ -6,7 +6,6 @@ from typing import Any
 
 import pandas as pd
 
-
 _SEPS = (";", ",", "|")
 
 # Explicit tokens that already encode "unspecified" (penalty applies, but should not trigger suffix x)
@@ -15,7 +14,6 @@ _EXPLICIT_UNSPEC_TOKENS = {
     "[literature/unspecified]",
     "unspecified",
 }
-
 
 def _is_nan(x: Any) -> bool:
     return x is None or (isinstance(x, float) and math.isnan(x))
