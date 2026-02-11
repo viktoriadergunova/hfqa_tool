@@ -159,17 +159,11 @@ def test_top_level_conditional_rules_require_shapes_supported(conditional_rules_
     out = ns.normalize_schema(copy.deepcopy(conditional_rules_schema))
     by_name = {r["name"]: r for r in out["conditional_rules"]}
 
-    # list-shaped require
-    r1 = by_name["probing_requires_c22_c23"]
+    # list-shaped require (required_if) — probing now only requires C23
+    r1 = by_name["probing_requires_c23"]
     assert isinstance(r1["require"], list)
-    assert {x["column"] for x in r1["require"]} == {"C22", "C23"}
+    assert {x["column"] for x in r1["require"]} == {"C23"}
 
-    # dict-shaped require
-    r2 = by_name["c22_c23_imply_probing"]
-    assert isinstance(r2["require"], dict)
-    assert r2["require"]["column"] == "P12"
-    assert r2["require"]["mode"] == "contains_any"
-    assert "[probing-(offshore-ocean)]" in set(r2["require"]["values"])
 
 
 def test_m_score_borehole_temperature_cases_normalized(quality_score_schema):

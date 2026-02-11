@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from etl.extract_excel import excel_to_parquet
-from etl.normalization import normalize_only_data_rows
+from etl.normalization_dataframe import normalize_only_data_rows
 from etl.typecasting import apply_schema_types
 from vocab_check.apply_conditional_check import apply_conditional_rules
 

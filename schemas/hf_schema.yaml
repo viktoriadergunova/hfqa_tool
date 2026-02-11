@@ -182,13 +182,13 @@ columns:
   C4:
     dtype: float64
     range: [0.0, 19999.9]
-    obligation: "M"
+    obligation: "R" # relevant because for marine it is not mandatory , for borehole it is mandatory
     comment: "HF Interval Top"
 
   C5:
     dtype: float64
     range: [0.0, 19999.9]
-    obligation: "M"
+    obligation: "R" # relevant because for marine it is not mandatory , for borehole it is mandatory
     comment: "HF Interval Bottom"
 
   C6:
@@ -372,7 +372,7 @@ columns:
   C23:
     dtype: float64
     range: [0.0, 99.9]
-    obligation: "M" # Relevant instead of M, and conditional check added for marine vs continental
+    obligation: "R" # Relevant instead of M, and conditional check added for marine vs continental
     comment: "Probe tilt"
 
   C24:
@@ -902,7 +902,7 @@ columns:
       - "[SUR]"
       - "[unspecified]"
       - "[Other (specify in comments)]"
-    obligation: "M"
+    obligation: "R"
     multi_choice: true
     separator: ";"
     comment: "Temperature method (top, multi-select)"
@@ -934,7 +934,7 @@ columns:
       - "[EGRT]"
       - "[unspecified]"
       - "[Other (specify in comments)]"
-    obligation: "M"
+    obligation: "R"
     multi_choice: true
     separator: ";"
     comment: "Temperature method (bottom, multi-select)"

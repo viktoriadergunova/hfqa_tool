@@ -245,36 +245,6 @@ conditional_rules:
   # Probing rules
   # =========================
 
-  - name: "probing_requires_c22_c23"
-    kind: "required_if"
-    when:
-      column: "P12"
-      mode: "contains_any"
-      values:
-        - "[Probing (onshore-lake-river-etc.)]"
-        - "[Probing (offshore-ocean)]"
-        - "[Probing-Clustering]"
-    require:
-      - column: "C22"
-        mandatory: true
-      - column: "C23"
-        mandatory: true
-
-  - name: "c22_c23_imply_probing"
-    kind: "imply_category"
-    when:
-      mode: "any_column_nonempty"
-      columns:
-        - "C22"
-        - "C23"
-    require:
-      column: "P12"
-      mode: "contains_any"
-      values:
-        - "[Probing (onshore-lake-river-etc.)]"
-        - "[Probing (offshore-ocean)]"
-        - "[Probing-Clustering]"
-
   - name: "probing_requires_c23"
     kind: "required_if"
     when:
@@ -286,4 +256,132 @@ conditional_rules:
         - "[Probing-Clustering]"
     require:
       - column: "C23"
+        mandatory: true
+
+  - name: "probing_requires_c6"
+    kind: "required_if"
+    when:
+      column: "P12"
+      mode: "contains_any"
+      values:
+        - "[Probing (onshore-lake-river-etc.)]"
+        - "[Probing (offshore-ocean)]"
+        - "[Probing-Clustering]"
+    require:
+      - column: "C6"
+        mandatory: true
+
+  - name: "borehole_requires_c4_c5"
+    kind: "required_if"
+    when:
+      column: "P12"
+      mode: "contains_any"
+      values:
+        - "[Drilling]"
+        - "[Drilling-Clustering]"
+        - "[Mining]"
+        - "[Tunneling]"
+        - "[Indirect (GTM-BSR-CPD-etc.)]"
+    require:
+      - column: "C4"
+        mandatory: true
+      - column: "C5"
+        mandatory: true
+
+  # C31 must be empty/unspecified for probing
+  - name: "probing_c31_empty_or_unspecified_offshore"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing (offshore-ocean)]"
+    target:
+      column: "C31"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+
+  - name: "probing_c31_empty_or_unspecified_onshore"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing (onshore-lake-river-etc.)]"
+    target:
+      column: "C31"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+
+  - name: "probing_c31_empty_or_unspecified_cluster"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing-Clustering]"
+    target:
+      column: "C31"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+  
+
+  # C32 must be empty/unspecified for probing
+  - name: "probing_c32_empty_or_unspecified_offshore"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing (offshore-ocean)]"
+    target:
+      column: "C32"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+
+  - name: "probing_c32_empty_or_unspecified_onshore"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing (onshore-lake-river-etc.)]"
+    target:
+      column: "C32"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+
+  - name: "probing_c32_empty_or_unspecified_cluster"
+    kind: "allowed_subset"
+    when:
+      column: "P12"
+      mode: "contains"
+      value: "[Probing-Clustering]"
+    target:
+      column: "C32"
+      multi_choice: true
+      separator: ";"
+      allowed:
+        - "[unspecified]"
+        
+  - name: "borehole_requires_c31_c32"
+    kind: "required_if"
+    when:
+      column: "P12"
+      mode: "contains_any"
+      values:
+        - "[Drilling]"
+        - "[Drilling-Clustering]"
+        - "[Mining]"
+        - "[Tunneling]"
+        - "[Indirect (GTM-BSR-CPD-etc.)]"
+    require:
+      - column: "C31"
+        mandatory: true
+      - column: "C32"
         mandatory: true
