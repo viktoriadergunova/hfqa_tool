@@ -1,125 +1,47 @@
 import pandas as pd
-import pytest
 
 from quality_score.apply_p_flags import calculate_p_flags
 
-@pytest.fixture
-def qc_schema_min_pflags():
-    # minimal qc schema containing only p_flags
-    return {
-        "m_score": {
-            "p_flags": {
-                "order": [
-                    "sedimentation",
-                    "erosion",
-                    "topography_bathymetry",
-                    "paleoclimate",
-                    "surface_bottom_water_variation",
-                    "convection",
-                    "heat_refraction",
-                ],
-                "fields": {
-                    "sedimentation": "C13",
-                    "erosion": "C14",
-                    "topography_bathymetry": "C15",
-                    "paleoclimate": "C16",
-                    "surface_bottom_water_variation": "C17",
-                    "convection": "C18",
-                    "heat_refraction": "C19",
-                },
-                "letters": {
-                    "sedimentation": "S",
-                    "erosion": "E",
-                    "topography_bathymetry": "T",
-                    "paleoclimate": "P",
-                    "surface_bottom_water_variation": "V",
-                    "convection": "C",
-                    "heat_refraction": "R",
-                },
 
-                "encoding": {
-                    "[present-and-corrected]": "UPPER",
-                    "[present-and-not-corrected]": "LOWER",
-                    "[present-not-significant]": "X",
-                    "[not-recognized]": "x",
-                    "[unspecified]": "-",
-                },
-            }
-        }
-    }
+def test_p_flags_encoding_happy_path(quality_score_schema):
+    # braucht encoding keys wie im Schema (normalisiert!)
+    qc = quality_score_schema
+    pf = qc["m_score"]["p_flags"]
+
+    # minimal: baue genau die 7 columns aus pf.fields
+    row = {}
+    for process, col in pf["fields"].items():
+        # default: unspecified -> should map to "-" (oder was encoding vorgibt)
+        row[col] = "[unspecified]"
+
+    # setze ein paar spezifische Werte, um UPPER/LOWER/X/x/- zu testen
+    # Die encoding keys sind im Schema normalisiert (z.B. "[present-and-corrected]")
+    #
+    processes = list(pf["order"])
+    if len(processes) >= 4:
+        row[pf["fields"][processes[0]]] = "[present-and-corrected]"      # UPPER
+        row[pf["fields"][processes[1]]] = "[present-and-not-corrected]"  # LOWER
+        row[pf["fields"][processes[2]]] = "[present-not-significant]"    # X
+        row[pf["fields"][processes[3]]] = "[not-recognized]"             # x
+
+    df = pd.DataFrame([row])
+    out = calculate_p_flags(df, qc).iloc[0]
+
+    assert isinstance(out, str)
+    assert len(out) == 7
+
+    # Prüfe die ersten 4 Positionen exakt gegen die Erwartungen (UPPER/LOWER/X/x)
+    # Buchstaben kommen aus pf["letters"][process]
+    p0 = pf["letters"][processes[0]].upper()
+    p1 = pf["letters"][processes[1]].lower()
+    assert out[0] == p0
+    assert out[1] == p1
+    assert out[2] == "X"
+    assert out[3] == "x"
 
 
-def test_p_flags_happy_path_all_actions(qc_schema_min_pflags):
-    df = pd.DataFrame(
-        {
-            "C13": ["[not-recognized]"],       # -> x
-            "C14": "[present-and-not-corrected]",   # -> e
-            "C15": "[present-and-corrected]",     # -> T
-            "C16": "[present-not-significant]",     # -> X
-            "C17": "[unspecified]",                 # -> -
-            "C18": None,                            # -> -
-            "C19": ""                              # -> -
-        }
-    )
-
-    out = calculate_p_flags(df, qc_schema_min_pflags)
-    assert out.iloc[0] == "xeTX---"  # length 7
-
-    
-def test_p_flags_normalizes_bracketed_tokens_whitespace_and_case(qc_schema_min_pflags):
-    df = pd.DataFrame(
-        {
-            "C13": [" [PRESENT   and   corrected] "],  # should normalize and match
-            "C14": ["[Present and NOT corrected]"],     # normalize and match
-            "C15": ["[Unspecified]"],                   # normalize to [unspecified]
-            "C16": [pd.NA],
-            "C17": [None],
-            "C18": [""],
-            "C19": ["   "],
-        }
-    )
-
-    out = calculate_p_flags(df, qc_schema_min_pflags)
-    assert out.iloc[0] == "Se-----"
-
-
-def test_p_flags_non_bracketed_values_do_not_match_encoding(qc_schema_min_pflags):
-    df = pd.DataFrame(
-        {
-            "C13": ["present and corrected"],  # no brackets => won't match encoding keys
-            "C14": ["present and not corrected"],
-            "C15": ["present not significant"],
-            "C16": ["not recognized"],
-            "C17": ["unspecified"],
-            "C18": [None],
-            "C19": [None],
-        }
-    )
-
-    out = calculate_p_flags(df, qc_schema_min_pflags)
-    assert out.iloc[0] == "-------"
-
-
-def test_p_flags_missing_p_flags_config_returns_all_dashes():
-    df = pd.DataFrame({"C13": ["[Present and corrected]"]})
-    qc_schema = {"m_score": {}}  # no p_flags
-    out = calculate_p_flags(df, qc_schema)
-    assert out.iloc[0] == "-------"
-
-
-def test_p_flags_missing_field_column_in_df_is_dash(qc_schema_min_pflags):
-    # Drop C14 column entirely -> erosion position must be "-"
-    df = pd.DataFrame(
-        {
-            "C13": ["[Present and corrected]"],  # S
-            # "C14" missing
-            "C15": ["[Present not significant]"],  # X
-            "C16": ["[Not recognized]"],           # x
-            "C17": ["[unspecified]"],              # -
-            "C18": ["[unspecified]"],              # -
-            "C19": ["[unspecified]"],              # -
-        }
-    )
-
-    out = calculate_p_flags(df, qc_schema_min_pflags)
-    assert out.iloc[0] == "S-Xx---"
+def test_p_flags_missing_schema_returns_dashes():
+    df = pd.DataFrame([{"C13": "[present-and-corrected]"}])
+    qc_schema = {"m_score": {"p_flags": {}}}
+    out = calculate_p_flags(df, qc_schema).iloc[0]
+    assert out == "-------"

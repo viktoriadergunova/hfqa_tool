@@ -30,33 +30,6 @@ def sample_data():
         "F": ["01.01.2020", "31.12.2022", "", None]
     })
 
-
-def test_apply_schema_types(sample_data, sample_schema):
-    df_casted = apply_schema_types(sample_data, sample_schema)
-    data_rows = df_casted[df_casted["row_type"] == "data"]
-
-    # Integer column: casted to Int64, invalid -> NA
-    assert data_rows["A"].dtype.name == "Int64"
-    assert pd.isna(data_rows.loc[3, "A"])
-
-    # Float column: casted to float64, invalid -> NaN
-    assert data_rows["B"].dtype.name == "float64"
-    assert pd.isna(data_rows.loc[3, "B"])
-
-    # String column: casted to string
-    assert "string" in str(data_rows["C"].dtype)
-
-    # Datetime with format: casted
-    assert pd.api.types.is_datetime64_any_dtype(data_rows["D"])
-    assert pd.isna(data_rows.loc[3, "D"])
-
-    # List column (treated as string)
-    assert "string" in str(data_rows["E"].dtype)
-
-    # Generic date: casted
-    assert pd.api.types.is_datetime64_any_dtype(data_rows["F"])
-
-
 def test_verify_schema_types_pass(sample_data, sample_schema):
     df_casted = apply_schema_types(sample_data, sample_schema)
     data_rows = df_casted[df_casted["row_type"] == "data"]

@@ -29,7 +29,7 @@ m_score:
 
   calculation:
     site_name_col: "P3"
-    m_route_col: "A7"
+    m_route_col: "P7"
 
     # --- Borehole temperature ---
     t_method_top_col: "C31"
