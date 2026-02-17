@@ -1039,7 +1039,7 @@ columns:
     allowed:
       - "[Actual heat-flow location]"
       - "[Other location]"
-      - "[Literature-unspecified]"
+      - "[Literature/unspecified]"
     obligation: "M"
     multi_choice: true
     separator: ";"

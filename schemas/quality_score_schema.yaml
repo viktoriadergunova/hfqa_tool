@@ -76,7 +76,7 @@ m_score:
           when:
             C37_T_number:
               op: ">"
-              value: 3
+              value: 15
           rules:
             equilibrium_or_corrected:
               methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]
@@ -89,10 +89,10 @@ m_score:
           when: {}
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[BHT]", "[cDTS]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"]
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[cBHT]", "[cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"] 
               penalty: -0.1
             perturbed:
-              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[cDTS]", "[RTDpert]", "[BLK]"]
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DTS]", "[RTDpert]", "[BLK]","[HT-FT]"]
               penalty: -0.3
             estimated:
               methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
@@ -108,7 +108,7 @@ m_score:
               C32_methods_any_of: ["[cBHT]", "[cDTS]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"]
               penalty: -0.3
             perturbed:
-              C32_methods_any_of: ["[BHT]", "[cDTS]", "[RTDpert]"]
+              C32_methods_any_of: ["[BHT]", "[DTS]", "[RTDpert]"]
               penalty: -0.5
             estimated:
               C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
@@ -162,7 +162,7 @@ m_score:
           C_field: "C44"
           mapping:
             "[Saturated measured]": 0.0
-            "[Saturated measured in situ]": 0.0
+            "[Saturated measured in-situ]": 0.0
             "[Saturated calculated]": -0.1
             "[Recovered]": -0.1
             "[Dry measured]": -0.2
@@ -179,7 +179,9 @@ m_score:
             "[Corrected in-situ (T)]": -0.1
             "[Recorded ambient pT conditions]": -0.2
             "[Unrecorded ambient pT conditions]": -0.2
-            "[Unspecified]": -0.2
+            "[unspecified]": -0.2
+
+            
 
       missing_metadata:
         required_C_fields_after_gate:
@@ -189,7 +191,6 @@ m_score:
           - "C44"
           - "C45"
         rule: "apply_max_penalty_per_missing_block_and_flag_x"
-
 
   # =====================================================
   # Marine / Probe-sensing (Paper Table 2)
@@ -221,7 +222,6 @@ m_score:
             _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
 
         water_depth:
-          # NOTE: derived from elevation P6 (mbsl ~ abs(P6) for offshore)
           C_field: "P6"
           corrected_if:
             flag_col: "C17"
@@ -266,37 +266,33 @@ m_score:
             "[Other location]": -0.1
             "[Literature/unspecified]": -0.2
 
-        # Source type + saturation + method interactions 
-        source_type:
-          C_field: "C41"
-          mapping:
-            "[In-situ probe]": 0.0
-            "[Core samples]": 0.0
-            "[Core-log integration]": 0.0
-            "[Cutting samples]": -0.1
-            "[Outcrop samples]": -0.1
-            "[Well-log interpretation]": -0.1
-            "[Mineral computation]": -0.2
-            "[Assumed from literature]": -0.2
-
         saturation:
+          # Covers the "Source type and saturation" combined block from Table 2.
+          # Penalties encode the saturation state; source type only matters for
+          # the in-situ pulse bonus, which is handled by conditional_rules.
           C_field: "C44"
           mapping:
-            "[Recovered]": 0.0
-            "[Saturated measured]": 0.0
-            "[Saturated calculated]": -0.1
-            "[Dry measured]": -0.2
-            "[Saturated measured in situ]": 0.0   
+            "[Recovered]": 0.0               # offshore ship: recovered
+            "[Saturated measured]": 0.0       # offshore ship: saturated / onshore saturated
+            "[Saturated measured in situ]": 0.0  # in-situ (base 0.0; +0.1 via conditional_rules)
+            "[Saturated calculated]": -0.1    # onshore calculated
+            "[Dry measured]": -0.2            # onshore dry
 
         tc_method:
+          # Paper Table 2 ties that -0.1 penalty to the condition
+          # {tc_location} = [literature/unspecified], not to tc_method alone.
+          # It appears under "Thermal conductivity method / Estimation" in Table 2
+          # but the condition column says tc_location = literature.
+          # Rows where method = estimation-lithology but location != literature
+          # should NOT be penalised here — the location block already penalises
+          # them at -0.2 for being literature-sourced.
+          # Only the estimation-from-water/mineral entries are unconditional tc_method penalties.
           C_field: "C43"
           mapping:
             "[Probe - pulse technique]": 0.0
-            "[Estimation - from lithology and literature]": -0.1
             "[Estimation - from water content/porosity]": -0.2
             "[Estimation - from mineral composition]": -0.2
 
-        # Number of conductivities (Table 2): >3 / 2-3 / 0-1 or unspecified
         number_of_conductivities:
           C_field: "C47"
           apply_only_if:
@@ -309,9 +305,11 @@ m_score:
             _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
 
         pT_conditions:
+          # The +0.1 bonus for pulse + actual in-situ pT is applied separately
+          # by conditional_rules below, not in this mapping.
           C_field: "C45"
           mapping:
-            "[Actual in-situ (pT) conditions]": 0.0   
+            "[Actual in-situ (pT) conditions]": 0.0
             "[Replicated in-situ (pT)]": 0.0
             "[Corrected in-situ (pT)]": 0.0
             "[Replicated in-situ (p)]": -0.1
@@ -324,14 +322,16 @@ m_score:
 
 
       conditional_rules:
-        # In-situ pulse probe: +0.1 if (tc_method == pulse) AND (tc_source == in-situ probe) AND (tc_saturation == saturated measured in situ)
+        # In-situ pulse probe: +0.1 if (tc_method == pulse) AND (tc_source == in-situ probe)
+        # AND (tc_saturation == saturated measured in situ).
         - when_all:
             C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
             C41_tc_source: { op: "==", value: "[In-situ probe]" }
             C44_tc_saturation: { op: "==", value: "[Saturated measured in situ]" }
           bonus: 0.1
 
-        # pT bonus: +0.1 only if tc_method == pulse AND pT == actual in-situ (pT)
+        # pT bonus: +0.1 only if tc_method == pulse AND pT == actual in-situ (pT).
+        # Combined with the base 0.0 from pT_conditions above → net +0.1.
         - when_all:
             C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
             C45_tc_pT_conditions: { op: "==", value: "[Actual in-situ (pT) conditions]" }
@@ -340,11 +340,12 @@ m_score:
       missing_metadata:
         required_C_fields:
           - "C42"
-          - "C41"
           - "C43"
           - "C44"
           - "C45"
           - "C47"
+        # Source type is only used in conditional_rules, not as a scored block.
+        # A missing C41 will simply not trigger the in-situ bonus — no x flag needed.
         rule: "apply_max_penalty_per_missing_block_and_flag_x"
 
   # =====================================================
