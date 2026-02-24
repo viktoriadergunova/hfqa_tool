@@ -3,6 +3,7 @@ import argparse
 import logging
 import time
 from pathlib import Path
+import pandas as pd
 
 import yaml
 
@@ -118,6 +119,7 @@ def run_pipeline(
 
         # JSON output (only if requested)
         if output_kind == "json":
+            df_data_typed = df_data_typed.replace({pd.NA: None})
             out_path = resolve_output_path(input_path, mode="vocab", kind="json")
 
             write_validation_report(
@@ -183,6 +185,7 @@ def run_pipeline(
 
        # only ONE output is written
         if output_kind == "json":
+            df_data_typed = df_data_typed.replace({pd.NA: None})
             out_path = resolve_output_path(input_path, mode="quality", kind="json")
 
             write_quality_report(
