@@ -11,8 +11,9 @@ from vocab_check.apply_functional_check import add_mandatory_flags, add_range_an
 from vocab_check.apply_conditional_check import apply_conditional_rules
 from quality_score.apply_u_quality_score import calculate_u_score
 from quality_score.combine_scores import combine_u_m_p_scores
-from quality_score.apply_m_quality_score import calculate_m_score
+from quality_score.apply_m_quality_score import calculate_m_score,  calculate_m_route_debug
 from quality_score.apply_p_flags import calculate_p_flags
+
 
 
 
@@ -164,6 +165,8 @@ def run_pipeline(
             qc_schema=qc_schema,
         )
 
+        df_data_typed["debug_m_route"] = calculate_m_route_debug(df_data_typed, qc_schema=qc_schema)
+
         df_data_typed["quality_P"] = calculate_p_flags(
             df_data_typed,
             qc_schema=qc_schema,
@@ -200,6 +203,14 @@ def run_pipeline(
                 out_col="quality_score",
             )
 
+            df_for_excel = generate_quality_score_column(
+                df_raw=df_for_excel,
+                df_scored=df_data_typed,
+                meta_rows=meta_rows,
+                source_col="debug_m_route",
+                out_col="debug_m_route",
+            )
+            
             write_excel_with_quality_score(
                 df_meta=df_meta,
                 df_with_quality=df_for_excel,
@@ -237,22 +248,6 @@ def main():
 
     args = parser.parse_args()
     setup_logging()
-
-    if args.run_tests:
-        #from testing.run.functional.check_range_flags import main as run_range_tests
-        #from testing.run.functional.check_obligation_flags import main as run_ob_tests
-        #from testing.run.functional.check_allowed_flags import main as run_allowed_tests
-        #from testing.run.conditional.check_conditions_test import main as run_cond_tests
-       #from testing.run.quality_score.check_u1_score import main as run_u_score_tests
-        #from testing.run.quality_score.check_m1_score import main as run_m_score_tests
-
-       # run_range_tests()
-        #run_ob_tests()
-       # run_allowed_tests()
-       # run_cond_tests()
-       # run_u_score_tests()
-       # run_m_score_tests()
-        return
 
     mode = "vocab" if args.vocab_check else "quality"
 

@@ -6,59 +6,41 @@ import pandas as pd
 from quality_score.apply_m_quality_score_borehole import calculate_m_score_borehole
 from quality_score.apply_m_quality_score_marine import calculate_m_score_marine
 
-# P7 vocabulary values that route to marine (probe-sensing) logic.
-# Source: Fuchs et al. (2023) Appendix A, field P07.
-# Full vocabulary:
-#   [Onshore (continental)]       → borehole
-#   [Onshore (lake, river, etc.)] → MARINE  (probe-sensing in lakes/rivers)
-#   [Offshore (continental)]      → MARINE  (probe-sensing on continental shelf)
-#   [Offshore (marine)]           → MARINE  (probe-sensing in open ocean)
-#   [unspecified]                 → borehole (conservative fallback)
+_MARINE_P12_TOKENS = {
+    "[probing-(onshore-lake-river-etc.)]",
+    "[probing-(offshore-ocean)]",
+    "[probing-clustering]",
+}
 
-_MARINE_TOKENS = {
-    "[offshore-(marine)]",
-    "[offshore-(continental)]",
-    "[onshore-(lake-river-etc.)]",
+_BOREHOLE_P12_TOKENS = {
+    "[drilling]",
+    "[mining]",
+    "[tunneling]",
+    "[drilling-clustering]",
+    "[indirect-(gtm-bsr-cpd-etc.)]",
 }
 
 
-def _is_marine_row(cell_value: str) -> bool:
-    """
-    Returns True if ANY token in the cell matches a marine environment.
-    Handles multi-value cells separated by ';'.
-    NOTE: do NOT split on comma — commas appear inside vocabulary tokens
-    such as '[Onshore (lake, river, etc.)]'.
-    Input is already lowercased.
-    """
+def _get_route(cell_value: str) -> str:
+    """Returns 'marine', 'borehole', or 'not_determined'."""
     if not cell_value:
-        return False
+        return "not_determined"
     tokens = {t.strip() for t in cell_value.split(";") if t.strip()}
-    return bool(tokens & _MARINE_TOKENS)
+    if tokens & _MARINE_P12_TOKENS:
+        return "marine"
+    if tokens & _BOREHOLE_P12_TOKENS:
+        return "borehole"
+    return "not_determined"  # [unspecified], [other], empty
 
 
 def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
-    """
-    Unified M-score entrypoint.
-
-    Routes each row to the correct scoring logic based on P7 (environment):
-      - [Offshore (marine)]           → marine / probe-sensing  (Table 2)
-      - [Offshore (continental)]      → marine / probe-sensing  (Table 2)
-      - [Onshore (lake, river, etc.)] → marine / probe-sensing  (Table 2)
-      - [Onshore (continental)]       → borehole / mine         (Table 3)
-      - [unspecified] / empty         → borehole / mine         (Table 3, conservative)
-    """
     m_cfg = qc_schema.get("m_score", {})
     calc  = m_cfg.get("calculation", {})
-    route_col = calc.get("m_route_col", "P7")
+    route_col = calc.get("m_route_col", "P12")  # <-- change default to P12
+    thr = m_cfg.get("thresholds", {})
+    missing_suffix = str(thr.get("missing_suffix", "x"))
 
-    if route_col not in df.columns:
-        raise KeyError(
-            f"Routing column '{route_col}' not found in dataframe. "
-            f"Available columns: {list(df.columns)}"
-        )
-
-    # Normalise to lowercase string, fill NA → empty string
-    env_values = (
+    p12_values = (
         df[route_col]
         .astype("string")
         .str.lower()
@@ -66,21 +48,36 @@ def calculate_m_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
         .str.strip()
     )
 
-    is_marine = env_values.apply(_is_marine_row)
-    is_borehole = ~is_marine
+    routes = p12_values.apply(_get_route)
 
     out = pd.Series(pd.NA, index=df.index, dtype="string")
 
-    if is_marine.any():
-        marine_idx = df.index[is_marine]
-        out.loc[marine_idx] = calculate_m_score_marine(
-            df.loc[marine_idx].copy(), qc_schema=qc_schema
-        )
+    marine_idx   = df.index[routes == "marine"]
+    borehole_idx = df.index[routes == "borehole"]
+    nd_idx       = df.index[routes == "not_determined"]
 
-    if is_borehole.any():
-        borehole_idx = df.index[is_borehole]
-        out.loc[borehole_idx] = calculate_m_score_borehole(
-            df.loc[borehole_idx].copy(), qc_schema=qc_schema
-        )
+    if len(marine_idx):
+        out.loc[marine_idx] = calculate_m_score_marine(df.loc[marine_idx].copy(), qc_schema)
+
+    if len(borehole_idx):
+        out.loc[borehole_idx] = calculate_m_score_borehole(df.loc[borehole_idx].copy(), qc_schema)
+
+    if len(nd_idx):
+        out.loc[nd_idx] = "Mx"  # not determined, no calculation
 
     return out
+
+
+def calculate_m_route_debug(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
+    """Debug column: returns 'marine', 'borehole', or 'not_determined' per row."""
+    calc = qc_schema.get("m_score", {}).get("calculation", {})
+    route_col = calc.get("m_route_col", "P12")
+
+    p12_values = (
+        df[route_col]
+        .astype("string")
+        .str.lower()
+        .fillna("")
+        .str.strip()
+    )
+    return p12_values.apply(_get_route).astype("string")
