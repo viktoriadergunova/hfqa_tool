@@ -153,7 +153,7 @@ def run_pipeline(
             )
 
 
-    # 4) Quality mode
+        # 4) Quality mode
     elif mode == "quality":
         logging.info("Starting IHFC Quality Scoring Mode...")
 
@@ -162,12 +162,30 @@ def run_pipeline(
             qc_schema=qc_schema,
         )
 
-        df_data_typed["quality_M"] = calculate_m_score(
+        # Call M-score with debug support
+        m_result = calculate_m_score(
             df_data_typed,
             qc_schema=qc_schema,
+            return_debug=True
         )
 
-        df_data_typed["debug_m_route"] = calculate_m_route_debug(df_data_typed, qc_schema=qc_schema)
+        if isinstance(m_result, tuple):
+            df_data_typed["quality_M"] = m_result[0]
+            debug_info = m_result[1]
+            # Assign debug columns (NaN where not applicable)
+            df_data_typed["debug_t_score"] = debug_info["debug_t_score"]
+            df_data_typed["debug_tc_score"] = debug_info["debug_tc_score"]
+            df_data_typed["debug_raw_combined"] = debug_info["debug_raw_combined"]
+        else:
+            # Fallback if no debug returned (should not happen)
+            df_data_typed["quality_M"] = m_result
+            df_data_typed["debug_t_score"] = pd.NA
+            df_data_typed["debug_tc_score"] = pd.NA
+            df_data_typed["debug_raw_combined"] = pd.NA
+
+        df_data_typed["debug_m_route"] = calculate_m_route_debug(
+            df_data_typed, qc_schema=qc_schema
+        )
 
         df_data_typed["quality_P"] = calculate_p_flags(
             df_data_typed,
@@ -183,7 +201,19 @@ def run_pipeline(
             separator=".",
         )
 
-       # only ONE output is written
+        # Quick console debug (only when debug-prefix is set)
+        if debug_prefix:
+            print("\nDebug preview (first 5 rows):")
+            preview_cols = [
+                "debug_t_score",
+                "debug_tc_score",
+                "debug_raw_combined",
+                "quality_M",
+                "debug_m_route"
+            ]
+            print(df_data_typed[preview_cols].head(5).to_string())
+
+        # only ONE output is written
         if output_kind == "json":
             df_data_typed = df_data_typed.replace({pd.NA: None})
             out_path = resolve_output_path(input_path, mode="quality", kind="json")
@@ -198,6 +228,7 @@ def run_pipeline(
         else:  # excel
             out_path = resolve_output_path(input_path, mode="quality", kind="excel")
 
+            # Start with your standard quality_score column
             df_for_excel = generate_quality_score_column(
                 df_raw=df_raw,
                 df_scored=df_data_typed,
@@ -206,6 +237,7 @@ def run_pipeline(
                 out_col="quality_score",
             )
 
+            # Add debug_m_route (keep your existing call)
             df_for_excel = generate_quality_score_column(
                 df_raw=df_for_excel,
                 df_scored=df_data_typed,
@@ -213,7 +245,29 @@ def run_pipeline(
                 source_col="debug_m_route",
                 out_col="debug_m_route",
             )
-            
+
+            # ────────────────────────────────────────────────────────────────
+            # Force-add the numeric debug columns (T, TC, raw combined)
+            # ────────────────────────────────────────────────────────────────
+            debug_float_cols = [
+                "debug_t_score",
+                "debug_tc_score",
+                "debug_raw_combined",
+            ]
+
+            for col in debug_float_cols:
+                if col in df_data_typed.columns:
+                    # Direct assignment: align index and copy values (preserves NaN)
+                    df_for_excel[col] = df_data_typed[col].reindex(df_for_excel.index).values
+
+                    # Optional: round to 3 decimals for readability in Excel
+                    df_for_excel[col] = df_for_excel[col].round(3)
+
+                else:
+                    # If column somehow missing → fill with NaN
+                    df_for_excel[col] = np.nan
+
+            # Write the Excel file with all columns
             write_excel_with_quality_score(
                 df_meta=df_meta,
                 df_with_quality=df_for_excel,

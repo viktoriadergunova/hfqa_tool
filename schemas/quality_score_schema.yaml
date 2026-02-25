@@ -14,10 +14,10 @@ u_score:
     role_parent: "[no]"
 
   thresholds:
-    U1: 5.0
-    U2: 15.0
-    U3: 25.0
-    U4: 100.0
+    U1: 5.0 # everything < this → U1
+    U2: 15.0 # ≤ this → U2
+    U3: 25.0 #  ≤ this → U3
+    # anything > U3 is U4
     Ux: "missing"
 
 
@@ -29,7 +29,7 @@ m_score:
 
   calculation:
     site_name_col: "P3"
-    m_route_col: "P7"
+    m_route_col: "P12"
 
     # --- Borehole temperature ---
     t_method_top_col: "C31"
@@ -209,9 +209,9 @@ m_score:
           C_field: "C6"
           bins:
             gt_10m: { when: { op: ">", value: 10.0 }, penalty: 0.1 }
-            _3_to_10m: { when: { op: ">=", value: 3.0 }, penalty: 0.0 }
-            _1_to_3m:  { when: { op: ">=", value: 1.0 }, penalty: -0.1 }
-            lt_1m_or_unspecified: { when: { op: "<", value: 1.0 }, penalty: -0.2 }
+            _3_to_10m: { when: { op: ">", value: 3.0 }, penalty: 0.0 }
+            _1_to_3m:  { when: { op: ">", value: 1.0 }, penalty: -0.1 }
+            lt_1m_or_unspecified: { when: { op: "<=", value: 1.0 }, penalty: -0.2 }
 
         number_of_temperature_points:
           C_field: "C37"
@@ -221,7 +221,7 @@ m_score:
             _2: { when: { op: "==", value: 2.0 }, penalty: -0.1 }
             _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
 
-        water_depth:
+        water_depth: #OR
           C_field: "P6"
           corrected_if:
             flag_col: "C17"
@@ -229,23 +229,23 @@ m_score:
             penalty_if_corrected: 0.0
           bins:
             gt_2500: { when: { op: ">", value: 2500.0 }, penalty: 0.0 }
-            _1500_to_2500: { when: { op: ">=", value: 1500.0 }, penalty: -0.1 }
-            lt_1500_or_unspecified: { when: { op: "<", value: 1500.0 }, penalty: -0.2 }
+            _1500_to_2500: { when: { op: ">", value: 1500.0 }, penalty: -0.1 }
+            lt_1500_or_unspecified: { when: { op: "<=", value: 1500.0 }, penalty: -0.2 }
 
-        probe_tilt:
+        probe_tilt: #OR
           C_field: "C23"
           corrected_if:
             flag_col: "C12"
             flag_value: "[Tilt corrected]"
             penalty_if_corrected: 0.0
           bins:
-            _0_to_10_or_corrected: { when: { op: ">=", value: 0.0 }, penalty: 0.0 }
-            _10_to_30: { when: { op: ">=", value: 10.0 }, penalty: -0.1 }
-            gt_30_or_unspecified: { when: { op: ">", value: 30.0 }, penalty: -0.2 }
+            gt_30_or_unspecified: { when: { op: ">",  value: 30.0 }, penalty: -0.2 }
+            gt_10_to_30:          { when: { op: ">",  value: 10.0 }, penalty: -0.1 }
+            _0_to_10:             { when: { op: ">=", value: 0.0  }, penalty:  0.0 }
 
       missing_metadata:
         required_C_fields:
-          - "C6"
+          - "C6" # Probe pentration depth
           - "C37"
           - "P6"
           - "C23"
@@ -267,86 +267,132 @@ m_score:
             "[Literature/unspecified]": -0.2
 
         saturation:
-          # Covers the "Source type and saturation" combined block from Table 2.
-          # Penalties encode the saturation state; source type only matters for
-          # the in-situ pulse bonus, which is handled by conditional_rules.
           C_field: "C44"
-          mapping:
-            "[Recovered]": 0.0               # offshore ship: recovered
-            "[Saturated measured]": 0.0       # offshore ship: saturated / onshore saturated
-            "[Saturated measured in situ]": 0.0  # in-situ (base 0.0; +0.1 via conditional_rules)
-            "[Saturated calculated]": -0.1    # onshore calculated
-            "[Dry measured]": -0.2            # onshore dry
+          cases:
+            # --- Offshore on-board (ship) measurement ---
+            - label: "ship_insitu"
+              when:
+                C44: "[Saturated measured insitu]"
+                C43: "[Probe - pulse technique]"
+                C41: "[In-situ probe]"
+              penalty: 0.1
 
-        tc_method:
-          # Paper Table 2 ties that -0.1 penalty to the condition
-          # {tc_location} = [literature/unspecified], not to tc_method alone.
-          # It appears under "Thermal conductivity method / Estimation" in Table 2
-          # but the condition column says tc_location = literature.
-          # Rows where method = estimation-lithology but location != literature
-          # should NOT be penalised here — the location block already penalises
-          # them at -0.2 for being literature-sourced.
-          # Only the estimation-from-water/mineral entries are unconditional tc_method penalties.
-          C_field: "C43"
-          mapping:
-            "[Probe - pulse technique]": 0.0
-            "[Estimation - from water content/porosity]": -0.2
-            "[Estimation - from mineral composition]": -0.2
+            - label: "ship_recovered_saturated"
+              when:
+                C44_any: ["[Recovered]", "[Saturated measured]"]
+                C43: "[Probe - pulse technique]"
+                C41: "[In-situ probe]"
+              penalty: 0.0
+            
+            # --- Onshore lab measurement ---
+            - label: "lab_saturated_measured"
+              when:
+                C44_any: ["[Recovered]", "[Saturated measured]"]
+                C43_any:
+                  - "[Lab - point source]"
+                  - "[Lab - line source - full space]"
+                  - "[Lab - line source - half space]"
+                  - "[Lab - plane source - full space]"
+                  - "[Lab - plane source - half space]"
+                  - "[Lab - other (specify in comments)]"
+              penalty: 0.0
+
+            - label: "lab_saturated_calculated"
+              when:
+                C44: "[Saturated calculated]"
+                C43_any:
+                  - "[Lab - point source]"
+                  - "[Lab - line source - full space]"
+                  - "[Lab - line source - half space]"
+                  - "[Lab - plane source - full space]"
+                  - "[Lab - plane source - half space]"
+                  - "[Lab - other (specify in comments)]"
+              penalty: -0.1
+
+            - label: "lab_dry"
+              when:
+                C44_any: ["[Dry measured]", "[Unspecified]", "[other (specify in comments)]"]
+                C43_any:
+                  - "[Lab - point source]"
+                  - "[Lab - line source - full space]"
+                  - "[Lab - line source - half space]"
+                  - "[Lab - plane source - full space]"
+                  - "[Lab - plane source - half space]"
+                  - "[Lab - other (specify in comments)]"
+              penalty: -0.2
+
+            # --- Estimation ---
+            - label: "estimation_lithology"
+              when:
+                C43: "[Estimation - from lithology and literature]"
+                C42: "[Literature/unspecified]"
+              penalty: -0.1
+
+            - label: "estimation_other"
+              when:
+                C43_any:
+                  - "[Estimation - from water content/porosity]"
+                  - "[Estimation - from mineral composition]"
+                  - "[Estimation - from chlorine content]"
+                  - "[unspecified]"
+                  - "[other (specify in comments)]"
+              penalty: -0.2
 
         number_of_conductivities:
-          C_field: "C47"
-          apply_only_if:
-            C42_tc_location:
-              op: "!="
-              value: "[Literature/unspecified]"
-          bins:
-            gt_3: { when: { op: ">", value: 3.0 }, penalty: 0.0 }
-            _2_to_3: { when: { op: ">=", value: 2.0 }, penalty: -0.1 }
-            _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
-
+            C_field: "C47"
+            apply_only_if:
+              C42_tc_location:
+                op: "!="
+                value: "[Literature/unspecified]"
+            bins:
+              gt_3: { when: { op: ">", value: 3.0 }, penalty: 0.0 }
+              _2_to_3: { when: { op: ">=", value: 2.0 }, penalty: -0.1 }
+              _0_to_1_or_unspecified: { when: { op: "<", value: 2.0 }, penalty: -0.2 }
+  
         pT_conditions:
-          # The +0.1 bonus for pulse + actual in-situ pT is applied separately
-          # by conditional_rules below, not in this mapping.
           C_field: "C45"
-          mapping:
-            "[Actual in-situ (pT) conditions]": 0.0
-            "[Replicated in-situ (pT)]": 0.0
-            "[Corrected in-situ (pT)]": 0.0
-            "[Replicated in-situ (p)]": -0.1
-            "[Corrected in-situ (p)]": -0.1
-            "[Replicated in-situ (T)]": -0.1
-            "[Corrected in-situ (T)]": -0.1
-            "[Recorded ambient pT conditions]": -0.2
-            "[Unrecorded ambient pT conditions]": -0.2
-            "[Unspecified]": -0.2
+          cases:
+            # --- In-situ pT ---
+            - label: "insitu_pT_pulse"
+              when:
+                C45: "[Actual in-situ (pT) conditions]"
+                C43: "[Probe - pulse technique]"
+              penalty: 0.1
 
+            - label: "insitu_pT_replicated_corrected"
+              when:
+                C45_any:
+                  - "[Replicated in-situ (pT)]"
+                  - "[Corrected in-situ (pT)]"
+              penalty: 0.0
 
-      conditional_rules:
-        # In-situ pulse probe: +0.1 if (tc_method == pulse) AND (tc_source == in-situ probe)
-        # AND (tc_saturation == saturated measured in situ).
-        - when_all:
-            C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
-            C41_tc_source: { op: "==", value: "[In-situ probe]" }
-            C44_tc_saturation: { op: "==", value: "[Saturated measured in situ]" }
-          bonus: 0.1
+            - label: "insitu_p_or_T"
+              when:
+                C45_any:
+                  - "[Replicated in-situ (p)]"
+                  - "[Corrected in-situ (p)]"
+                  - "[Replicated in-situ (T)]"
+                  - "[Corrected in-situ (T)]"
+              penalty: -0.1
 
-        # pT bonus: +0.1 only if tc_method == pulse AND pT == actual in-situ (pT).
-        # Combined with the base 0.0 from pT_conditions above → net +0.1.
-        - when_all:
-            C43_tc_method: { op: "==", value: "[Probe - pulse technique]" }
-            C45_tc_pT_conditions: { op: "==", value: "[Actual in-situ (pT) conditions]" }
-          bonus: 0.1
+            # --- Ambient pT ---
+            - label: "ambient_pT"
+              when:
+                C45_any:
+                  - "[Recorded ambient pT conditions]"
+                  - "[Unrecorded ambient pT conditions]"
+                  - "[Unspecified]"
+              penalty: -0.2
 
-      missing_metadata:
-        required_C_fields:
-          - "C42"
-          - "C43"
-          - "C44"
-          - "C45"
-          - "C47"
-        # Source type is only used in conditional_rules, not as a scored block.
-        # A missing C41 will simply not trigger the in-situ bonus — no x flag needed.
-        rule: "apply_max_penalty_per_missing_block_and_flag_x"
+        missing_metadata:
+          required_C_fields:
+            - "C42"
+            - "C43"
+            - "C44"
+            - "C45"
+
+          # A missing  x flag needed.
+          rule: "apply_max_penalty_per_missing_block_and_flag_x"
 
   # =====================================================
   # PERTURBATION FLAGS (P-FLAGS)

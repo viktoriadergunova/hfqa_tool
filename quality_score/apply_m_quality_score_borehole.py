@@ -106,7 +106,11 @@ def _eval_when(cond: Any, cell_value: Any) -> bool:
     return False
 
 
-def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
+def calculate_m_score_borehole(
+    df: pd.DataFrame,
+    qc_schema: dict,
+    return_debug: bool = False
+) -> pd.Series | tuple[pd.Series, dict]:
     """
     Borehole-only M-score.
     Assumes df values already normalized upstream.
@@ -344,13 +348,37 @@ def calculate_m_score_borehole(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
 
         return score, has_missing
 
+    # ────────────────────────────────────────────────────────────────
+    # Debug collection (only if requested)
+    t_scores_list = [] if return_debug else None
+    tc_scores_list = [] if return_debug else None
+    raw_list = [] if return_debug else None
+    # ────────────────────────────────────────────────────────────────
+
     out: list[str] = []
     for i in df.index:
         t_score, t_missing = apply_temperature(i)
         tc_score, tc_missing = apply_conductivity(i)
 
+        # Collect debug values
+        if return_debug:
+            t_scores_list.append(t_score)
+            tc_scores_list.append(tc_score)
+            raw = float(t_score) * float(tc_score)
+            raw_list.append(raw)
+
         raw = float(t_score) * float(tc_score)
         base = classify(raw)
         out.append(f"{base}{missing_suffix}" if (t_missing or tc_missing) else base)
 
-    return pd.Series(out, index=df.index, dtype="string")
+    out_series = pd.Series(out, index=df.index, dtype="string")
+
+    if return_debug:
+        debug_dict = {
+            "debug_t_score": pd.Series(t_scores_list, index=df.index, dtype=float),
+            "debug_tc_score": pd.Series(tc_scores_list, index=df.index, dtype=float),
+            "debug_raw_combined": pd.Series(raw_list, index=df.index, dtype=float),
+        }
+        return out_series, debug_dict
+    else:
+        return out_series

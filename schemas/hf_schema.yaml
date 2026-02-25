@@ -303,7 +303,7 @@ columns:
       - "[Not recognized]"
       - "[unspecified]"
     obligation: "M"
-    comment: "Flag: transient corrections"
+    comment: "Flag: surface temperature/bottom water"
 
   C18:
     dtype: string
