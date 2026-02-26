@@ -186,10 +186,10 @@ m_score:
       missing_metadata:
         required_C_fields_after_gate:
           - "C42"
-          - "C41"
           - "C47"
           - "C44"
           - "C45"
+          - "C43"
         rule: "apply_max_penalty_per_missing_block_and_flag_x"
 
   # =====================================================

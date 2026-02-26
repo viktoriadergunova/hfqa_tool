@@ -6,31 +6,26 @@ import pandas as pd
 from quality_score.apply_m_quality_score_borehole import calculate_m_score_borehole
 from quality_score.apply_m_quality_score_marine import calculate_m_score_marine
 
-_MARINE_P12_TOKENS = {
-    "[probing-(onshore-lake-river-etc.)]",
-    "[probing-(offshore-ocean)]",
-    "[probing-clustering]",
-}
-
-_BOREHOLE_P12_TOKENS = {
-    "[drilling]",
-    "[mining]",
-    "[tunneling]",
-    "[drilling-clustering]",
-    "[indirect-(gtm-bsr-cpd-etc.)]",
-}
-
-
 def _get_route(cell_value: str) -> str:
-    """Returns 'marine', 'borehole', or 'not_determined'."""
     if not cell_value:
         return "not_determined"
-    tokens = {t.strip() for t in cell_value.split(";") if t.strip()}
-    if tokens & _MARINE_P12_TOKENS:
+    
+    value_norm = str(cell_value).strip().lower()
+    tokens = {t.strip() for t in value_norm.split(";") if t.strip()}
+    
+    # Marine: contains "probing" and any of onshore/lake/river/offshore/ocean/clustering
+    if "probing" in value_norm and any(word in value_norm for word in [
+        "onshore", "lake", "river", "offshore", "ocean", "clustering"
+    ]):
         return "marine"
-    if tokens & _BOREHOLE_P12_TOKENS:
+    
+    # Borehole: contains drilling/mining/tunneling/indirect
+    if any(word in value_norm for word in [
+        "drilling", "mining", "tunneling", "indirect", "gtm", "bsr", "cpd"
+    ]):
         return "borehole"
-    return "not_determined"  # [unspecified], [other], empty
+    
+    return "not_determined"
 
 
 def calculate_m_score(

@@ -11,17 +11,16 @@ from etl.normalization_utils import (
 )
 
 
-def normalize_allowed_values(allowed_values, col_spec: dict, global_string_norm: dict) -> set:
+def normalize_allowed_values(
+    allowed_values, col_spec: dict, global_string_norm: dict
+) -> set:
     """
     Normalize schema allowed-values to a lowercase set.
 
-    Uses bracketed vocabulary normalization only when:
+    Applies bracketed token normalization only when:
       - column enforce_brackets is True, or
       - global enforce_brackets is True, or
       - allowed values already contain bracketed tokens
-
-    NOTE: Returns a SET on purpose (dedupe). Ordering is enforced in normalize_schema()
-    via sorted(...), to guarantee deterministic/idempotent output.
     """
     if allowed_values is None:
         return set()
@@ -30,10 +29,9 @@ def normalize_allowed_values(allowed_values, col_spec: dict, global_string_norm:
     has_bracketed = any(is_bracketed_token(str(a)) for a in allowed_values if a is not None)
 
     col_norm = col_spec.get("normalization", {})
-    if col_norm.get("enforce_brackets") is not None:
-        enforce_brackets = bool(col_norm.get("enforce_brackets"))
-    else:
-        enforce_brackets = bool(global_string_norm.get("enforce_brackets", False))
+    enforce_brackets = col_norm.get("enforce_brackets")
+    if enforce_brackets is None:
+        enforce_brackets = global_string_norm.get("enforce_brackets", False)
 
     if enforce_brackets or has_bracketed:
         allowed_series = normalize_bracketed_token_series(allowed_series)
@@ -50,10 +48,6 @@ def normalize_schema(schema: dict) -> dict:
       - top-level conditional_rules.yaml format (when/target/params/require)
 
     Returns a normalized deep copy (does not mutate the input).
-
-    IMPORTANT:
-      - To make output deterministic and idempotent, any "allowed" lists that pass
-        through set() are written back as sorted(list).
     """
     schema = copy.deepcopy(schema)
 
@@ -61,142 +55,113 @@ def normalize_schema(schema: dict) -> dict:
     global_string_norm = norm_cfg.get("string", {})
 
     def _normalize_when_block(when: dict) -> None:
-        """
-        Normalize a {col: {op,value}} (m_score) when/apply_only_if dict.
-        Only normalizes string 'value' fields and legacy string expressions.
-        """
         if not isinstance(when, dict):
             return
-        for wk, wv in when.items():
-            if isinstance(wv, dict):
-                if isinstance(wv.get("value"), str):
-                    wv["value"] = normalize_token(wv["value"])
-            elif isinstance(wv, str):
-                when[wk] = normalize_token(wv)
+        for key, value in when.items():
+            if isinstance(value, dict) and isinstance(value.get("value"), str):
+                value["value"] = normalize_token(value["value"])
+            elif isinstance(value, str):
+                when[key] = normalize_token(value)
 
     def _normalize_mapping_keys(mapping: dict) -> dict:
-        """
-        Normalize mapping keys:
-          - bracketed tokens -> normalize_token
-          - otherwise -> strip/lower
-        """
         if not isinstance(mapping, dict):
             return mapping
-        new_mapping = {}
-        for mk, mv in mapping.items():
-            if isinstance(mk, str):
-                nk = normalize_token(mk) if is_bracketed_token(mk) else mk.strip().lower()
-            else:
-                nk = mk
-            new_mapping[nk] = mv
-        return new_mapping
+        return {
+            normalize_token(k) if is_bracketed_token(k) else k.strip().lower(): v
+            for k, v in mapping.items()
+        }
 
     def _normalize_bins(bins: dict) -> None:
-        """
-        Normalize bins.*.when.value if it's a string token.
-        """
         if not isinstance(bins, dict):
             return
-        for _, b in bins.items():
-            if not isinstance(b, dict):
-                continue
-            w = b.get("when")
-            if isinstance(w, dict) and isinstance(w.get("value"), str):
-                w["value"] = normalize_token(w["value"])
+        for _, bin_def in bins.items():
+            when = bin_def.get("when")
+            if isinstance(when, dict) and isinstance(when.get("value"), str):
+                when["value"] = normalize_token(when["value"])
 
-    def _normalize_corrected_if(ci: dict) -> None:
-        """
-        corrected_if:
-          flag_col: "C12"
-          flag_value: "[Tilt corrected]"
-        Normalize flag_value and strip flag_col.
-        """
-        if not isinstance(ci, dict):
+    def _normalize_corrected_if(corrected_if: dict) -> None:
+        if not isinstance(corrected_if, dict):
             return
-        if ci.get("flag_col") is not None:
-            ci["flag_col"] = str(ci["flag_col"]).strip()
-        if isinstance(ci.get("flag_value"), str):
-            ci["flag_value"] = normalize_token(ci["flag_value"])
+        if "flag_col" in corrected_if:
+            corrected_if["flag_col"] = str(corrected_if["flag_col"]).strip()
+        if isinstance(corrected_if.get("flag_value"), str):
+            corrected_if["flag_value"] = normalize_token(corrected_if["flag_value"])
 
     def _normalize_conditional_rules_when_all(rules: list) -> None:
-        """
-        m_score.marine_logic.conductivity.conditional_rules[*].when_all.*.(value)
-        """
         if not isinstance(rules, list):
             return
-        for r in rules:
-            if not isinstance(r, dict):
-                continue
-            when_all = r.get("when_all")
+        for rule in rules:
+            when_all = rule.get("when_all")
             if isinstance(when_all, dict):
                 _normalize_when_block(when_all)
 
-    # -----------------------------
-    # Normalize columns/core allowed (deterministic ordering!)
-    # -----------------------------
+    # NEW: Normalize conditions inside cases (e.g. saturation C44_any / C43_any)
+    def _normalize_cases(cases: list[dict]) -> None:
+        if not isinstance(cases, list):
+            return
+        for case in cases:
+            when = case.get("when")
+            if isinstance(when, dict):
+                for key, value in when.items():
+                    if isinstance(value, str):
+                        when[key] = normalize_token(value)
+                    elif isinstance(value, list):
+                        when[key] = [normalize_token(v) for v in value]
+
+    # Normalize columns/core allowed values (deterministic order)
     for section in ("columns", "core"):
-        for _, col_spec in schema.get(section, {}).items():
+        for col_name, col_spec in schema.get(section, {}).items():
             allowed = col_spec.get("allowed")
             if allowed is not None:
                 col_spec["allowed"] = sorted(
                     normalize_allowed_values(allowed, col_spec, global_string_norm)
                 )
 
-    # -----------------------------
     # Normalize generic conditions (heatflow schema)
-    # -----------------------------
     if "conditions" in schema:
         for cond in schema["conditions"]:
             for key in ("when", "then"):
-                if key not in cond:
-                    continue
-                for col, val in list(cond[key].items()):
-                    if isinstance(val, list):
-                        cond[key][col] = [normalize_token(v) for v in val]
-                    else:
-                        cond[key][col] = normalize_token(val)
+                if key in cond:
+                    _normalize_when_block(cond[key])
 
-    # -----------------------------
-    # Normalize top-level conditional_rules.yaml (rules-file format)
-    # -----------------------------
+    # Normalize top-level conditional_rules (rules-file format)
     rules = schema.get("conditional_rules")
     if isinstance(rules, list):
-        for r in rules:
-            if not isinstance(r, dict):
+        for rule in rules:
+            if not isinstance(rule, dict):
                 continue
 
-            when = r.get("when")
+            when = rule.get("when")
             if isinstance(when, dict):
                 if isinstance(when.get("column"), str):
                     when["column"] = when["column"].strip()
                 if isinstance(when.get("mode"), str):
                     when["mode"] = when["mode"].strip().lower()
-
                 if isinstance(when.get("value"), str):
                     when["value"] = normalize_token(when["value"])
                 if isinstance(when.get("values"), list):
                     when["values"] = [normalize_token(v) for v in when["values"]]
-
                 if isinstance(when.get("columns"), list):
                     when["columns"] = [str(c).strip() for c in when["columns"]]
 
-            target = r.get("target")
+            target = rule.get("target")
             if isinstance(target, dict):
                 if isinstance(target.get("column"), str):
                     target["column"] = target["column"].strip()
                 if isinstance(target.get("allowed"), list):
-                    target_allowed = [normalize_token(v) for v in target["allowed"]]
-                    target["allowed"] = sorted(target_allowed)  # deterministic
+                    target["allowed"] = sorted(
+                        [normalize_token(v) for v in target["allowed"]]
+                    )
 
-            params = r.get("params")
+            params = rule.get("params")
             if isinstance(params, dict):
-                for k, v in list(params.items()):
+                for k, v in params.items():
                     if k.endswith("_tokens") and isinstance(v, list):
                         params[k] = [normalize_token(x) for x in v]
 
-            req = r.get("require")
-            if isinstance(req, list):
-                for item in req:
+            require = rule.get("require")
+            if isinstance(require, list):
+                for item in require:
                     if not isinstance(item, dict):
                         continue
                     if isinstance(item.get("column"), str):
@@ -207,28 +172,28 @@ def normalize_schema(schema: dict) -> dict:
                         item["value"] = normalize_token(item["value"])
                     if isinstance(item.get("values"), list):
                         item["values"] = [normalize_token(x) for x in item["values"]]
-            elif isinstance(req, dict):
-                if isinstance(req.get("column"), str):
-                    req["column"] = req["column"].strip()
-                if isinstance(req.get("mode"), str):
-                    req["mode"] = req["mode"].strip().lower()
-                if isinstance(req.get("value"), str):
-                    req["value"] = normalize_token(req["value"])
-                if isinstance(req.get("values"), list):
-                    req["values"] = [normalize_token(x) for x in req["values"]]
+            elif isinstance(require, dict):
+                if isinstance(require.get("column"), str):
+                    require["column"] = require["column"].strip()
+                if isinstance(require.get("mode"), str):
+                    require["mode"] = require["mode"].strip().lower()
+                if isinstance(require.get("value"), str):
+                    require["value"] = normalize_token(require["value"])
+                if isinstance(require.get("values"), list):
+                    require["values"] = [normalize_token(x) for x in require["values"]]
 
-    # -----------------------------
-    # Normalize hf_quality / m_score blocks (optional)
-    # -----------------------------
+    # Normalize m_score / quality_score blocks
     m_score = schema.get("m_score")
     if isinstance(m_score, dict):
+        # Borehole logic
+        bh_logic = m_score.get("borehole_logic")
+        if isinstance(bh_logic, dict):
+            for section in ("temperature", "conductivity"):
+                sec = bh_logic.get(section)
+                if not isinstance(sec, dict):
+                    continue
 
-        borehole_logic = m_score.get("borehole_logic")
-        if isinstance(borehole_logic, dict):
-
-            temperature = borehole_logic.get("temperature")
-            if isinstance(temperature, dict):
-                cases = temperature.get("cases")
+                cases = sec.get("cases")
                 if isinstance(cases, dict):
                     for _, case in cases.items():
                         if not isinstance(case, dict):
@@ -236,44 +201,39 @@ def normalize_schema(schema: dict) -> dict:
                         when = case.get("when")
                         if isinstance(when, dict):
                             _normalize_when_block(when)
-
                         rules = case.get("rules")
                         if isinstance(rules, dict):
                             for _, rule in rules.items():
                                 if not isinstance(rule, dict):
                                     continue
+                                for key in ("methods_any_of", "C32_methods_any_of"):
+                                    if isinstance(rule.get(key), list):
+                                        rule[key] = normalize_token_list(rule[key])
+                                for k, v in rule.items():
+                                    if isinstance(v, str):
+                                        rule[k] = normalize_token(v)
 
-                                for mk in ("methods_any_of", "C32_methods_any_of"):
-                                    mv = rule.get(mk)
-                                    if isinstance(mv, list):
-                                        rule[mk] = normalize_token_list(mv)
-
-                                for rk, rv in list(rule.items()):
-                                    if isinstance(rv, str):
-                                        rule[rk] = normalize_token(rv)
-
-            conductivity = borehole_logic.get("conductivity")
-            if isinstance(conductivity, dict):
-                blocks = conductivity.get("blocks")
+                blocks = sec.get("blocks")
                 if isinstance(blocks, dict):
                     for _, block in blocks.items():
                         if not isinstance(block, dict):
                             continue
-
-                        if block.get("C_field") is not None:
+                        if block.get("C_field"):
                             block["C_field"] = str(block["C_field"]).strip()
+                        if block.get("apply_only_if"):
+                            _normalize_when_block(block["apply_only_if"])
+                        if block.get("mapping"):
+                            block["mapping"] = _normalize_mapping_keys(block["mapping"])
+                        if block.get("bins"):
+                            _normalize_bins(block["bins"])
+                        if block.get("corrected_if"):
+                            _normalize_corrected_if(block["corrected_if"])
 
-                        apply_only_if = block.get("apply_only_if")
-                        if isinstance(apply_only_if, dict):
-                            _normalize_when_block(apply_only_if)
-
-                        mapping = block.get("mapping")
-                        if isinstance(mapping, dict):
-                            block["mapping"] = _normalize_mapping_keys(mapping)
-
+        # Marine logic
         marine_logic = m_score.get("marine_logic")
         if isinstance(marine_logic, dict):
 
+            # Temperature
             t = marine_logic.get("temperature")
             if isinstance(t, dict):
                 blocks = t.get("blocks")
@@ -281,60 +241,57 @@ def normalize_schema(schema: dict) -> dict:
                     for _, blk in blocks.items():
                         if not isinstance(blk, dict):
                             continue
-
-                        if blk.get("C_field") is not None:
+                        if blk.get("C_field"):
                             blk["C_field"] = str(blk["C_field"]).strip()
-
                         _normalize_corrected_if(blk.get("corrected_if"))
                         _normalize_bins(blk.get("bins"))
 
+            # Conductivity — NEW: normalize saturation & pT cases
             c = marine_logic.get("conductivity")
             if isinstance(c, dict):
                 blocks = c.get("blocks")
                 if isinstance(blocks, dict):
+                    # Normalize saturation and pT_conditions cases
+                    for block_name in ("saturation", "pT_conditions"):
+                        blk = blocks.get(block_name)
+                        if isinstance(blk, dict):
+                            cases = blk.get("cases")
+                            if isinstance(cases, list):
+                                _normalize_cases(cases)
+
+                    # Existing block normalization
                     for _, blk in blocks.items():
                         if not isinstance(blk, dict):
                             continue
-
-                        if blk.get("C_field") is not None:
+                        if blk.get("C_field"):
                             blk["C_field"] = str(blk["C_field"]).strip()
-
                         apply_only_if = blk.get("apply_only_if")
                         if isinstance(apply_only_if, dict):
                             _normalize_when_block(apply_only_if)
-
                         mapping = blk.get("mapping")
                         if isinstance(mapping, dict):
                             blk["mapping"] = _normalize_mapping_keys(mapping)
-
                         _normalize_bins(blk.get("bins"))
                         _normalize_corrected_if(blk.get("corrected_if"))
 
                 _normalize_conditional_rules_when_all(c.get("conditional_rules"))
 
+        # p_flags
         p_flags = m_score.get("p_flags")
         if isinstance(p_flags, dict):
-            fields = p_flags.get("fields")
-            if isinstance(fields, dict):
-                for k, v in fields.items():
+            if "fields" in p_flags and isinstance(p_flags["fields"], dict):
+                for k, v in p_flags["fields"].items():
                     if isinstance(v, str):
-                        fields[k] = v.strip()
-
-            letters = p_flags.get("letters")
-            if isinstance(letters, dict):
-                for k, v in letters.items():
+                        p_flags["fields"][k] = v.strip()
+            if "letters" in p_flags and isinstance(p_flags["letters"], dict):
+                for k, v in p_flags["letters"].items():
                     if isinstance(v, str):
-                        letters[k] = v.strip()
-
-            encoding = p_flags.get("encoding")
-            if isinstance(encoding, dict):
+                        p_flags["letters"][k] = v.strip()
+            if "encoding" in p_flags and isinstance(p_flags["encoding"], dict):
                 new_enc = {}
-                for k, v in encoding.items():
-                    if isinstance(k, str):
-                        nk = normalize_token(k) if k else k
-                        new_enc[nk] = v
-                    else:
-                        new_enc[k] = v
+                for k, v in p_flags["encoding"].items():
+                    nk = normalize_token(k) if isinstance(k, str) else k
+                    new_enc[nk] = v
                 p_flags["encoding"] = new_enc
 
     return schema

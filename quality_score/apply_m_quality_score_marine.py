@@ -17,10 +17,6 @@ def _is_nan(x: Any) -> bool:
     return x is None or (isinstance(x, float) and math.isnan(x))
 
 
-def _norm(s: str) -> str:
-    return str(s).strip().lower()
-
-
 def _col_as_num(df: pd.DataFrame, col: str) -> pd.Series:
     if col not in df.columns:
         return pd.Series([math.nan] * len(df), index=df.index)
@@ -62,7 +58,6 @@ def _eval_bins_largest_first(bins: dict, value: Any) -> tuple[float, bool]:
       - Value empty / NaN / unparseable: (worst_penalty, True)   ← largest penalty + x flag
       - Value present, nothing matched: (worst_penalty, False)   ← data issue, no x
     """
-    # Missing / empty → worst penalty + x flag
     if _is_nan(value):
         if not bins:
             return 0.0, True
@@ -72,7 +67,6 @@ def _eval_bins_largest_first(bins: dict, value: Any) -> tuple[float, bool]:
     try:
         fval = float(value)
     except (TypeError, ValueError):
-        # Unparseable → treat as missing: worst penalty + x flag
         if not bins:
             return 0.0, True
         worst_penalty = min(float(bin_def["penalty"]) for bin_def in bins.values())
@@ -91,7 +85,6 @@ def _eval_bins_largest_first(bins: dict, value: Any) -> tuple[float, bool]:
         if _eval_bin(fval, op, thresh):
             return float(bin_def["penalty"]), False
 
-    # present but no bin matched → conservative: worst penalty, no x
     if not bins:
         return 0.0, False
     worst_penalty = min(float(bin_def["penalty"]) for bin_def in bins.values())
@@ -110,7 +103,6 @@ def _worst_matched_penalty(tokens: set[str], mapping: dict[str, float]) -> tuple
       - Present but no match:      (worst_penalty, False)  ← data issue, no x
     """
     if not tokens:
-        # Empty → worst penalty + x flag
         if not mapping:
             return 0.0, True
         worst = min(float(v) for v in mapping.values())
@@ -120,7 +112,6 @@ def _worst_matched_penalty(tokens: set[str], mapping: dict[str, float]) -> tuple
     if matched:
         return min(matched), False
 
-    # Present but unrecognised → worst penalty, no x
     if not mapping:
         return 0.0, False
     worst = min(float(v) for v in mapping.values())
@@ -146,19 +137,16 @@ def _eval_cases(
       - Case matched:                          (penalty, False)
       - Missing required field(s) or no case matched: (worst_penalty, True)  ← x flag + largest penalty
     """
-    # Determine required fields from all cases
     required_fields = set()
     for case in cases:
         required_fields.update(case.get("when", {}).keys())
 
-    # Check if any required field is completely missing/empty
     missing_required = any(
         not row_tokens.get(field.replace("_any", ""), set())
         for field in required_fields
     )
 
     if missing_required:
-        # Missing required field(s) → worst penalty + x flag
         if not cases:
             return 0.0, True
         worst = min(float(case["penalty"]) for case in cases)
@@ -172,14 +160,14 @@ def _eval_cases(
             if field.endswith("_any"):
                 col = field[:-4]
                 tokens = row_tokens.get(col, set())
-                values = {_norm(v) for v in condition}
+                values = set(condition)  # upstream already normalized
                 if not tokens & values:
                     match = False
                     break
             else:
                 col = field
                 tokens = row_tokens.get(col, set())
-                val = _norm(condition)
+                val = condition  # upstream already normalized
                 if val not in tokens:
                     match = False
                     break
@@ -202,26 +190,6 @@ def calculate_m_score_marine(
     qc_schema: dict,
     return_debug: bool = False
 ) -> pd.Series | tuple[pd.Series, dict]:
-    """
-    Marine / probe-sensing M-score (Table 2 of Fuchs et al. 2023).
-
-    Temperature blocks:
-      T1 - penetration depth         (C6,  bins largest-first)
-      T2 - number of T points        (C37, bins largest-first)
-      T3 - water depth               (P6,  bins; OR short-circuit if C17=[Present and corrected])
-      T4 - probe tilt                (C23, bins; OR short-circuit if C12=[Tilt corrected])
-
-    Conductivity blocks:
-      TC1 - location                 (C42, flat mapping)
-      TC2 - source type + saturation (C44+C43+C41, cases with AND/OR conditions)
-      TC3 - number of conductivities (C47, bins largest-first; skip if C42=literature)
-      TC4 - pT conditions            (C45+C43, cases with AND/OR conditions)
-
-    Missing data policy (aligned with paper):
-      - Missing/empty field          → worst penalty + x flag
-      - Present, no match/unrecognized → worst penalty, no x flag
-      - Matched                      → case/bin penalty, no x flag
-    """
     m_cfg = qc_schema["m_score"]
     calc  = m_cfg["calculation"]
     thr   = m_cfg["thresholds"]
@@ -255,11 +223,11 @@ def calculate_m_score_marine(
     tc_blocks = tc_logic["blocks"]
 
     # --- flag tokens read from schema (never hardcoded) ---
-    BWT_corrected_tok  = _norm(t_blocks["water_depth"]["corrected_if"]["flag_value"])
-    tilt_corrected_tok = _norm(t_blocks["probe_tilt"]["corrected_if"]["flag_value"])
+    BWT_corrected_tok  = t_blocks["water_depth"]["corrected_if"]["flag_value"].strip().lower()
+    tilt_corrected_tok = t_blocks["probe_tilt"]["corrected_if"]["flag_value"].strip().lower()
 
     # --- flat mapping for location block ---
-    _loc_map = {_norm(k): float(v) for k, v in tc_blocks["location"]["mapping"].items()}
+    _loc_map = {k.strip().lower(): float(v) for k, v in tc_blocks["location"]["mapping"].items()}
 
     def classify(raw: float) -> str:
         if _is_nan(raw):
@@ -275,61 +243,70 @@ def calculate_m_score_marine(
         has_missing = False
 
         # --- T1: Penetration depth ---
-        pen, miss = _eval_bins_largest_first(
+        pen_t1, miss_t1 = _eval_bins_largest_first(
             t_blocks["penetration_depth"]["bins"],
             pen_depth_s.at[i],
         )
-        score += pen
-        has_missing = has_missing or miss
+        score += pen_t1
+        has_missing = has_missing or miss_t1
 
         # --- T2: Number of T points ---
-        pen, miss = _eval_bins_largest_first(
+        pen_t2, miss_t2 = _eval_bins_largest_first(
             t_blocks["number_of_temperature_points"]["bins"],
             T_n_s.at[i],
         )
-        score += pen
-        has_missing = has_missing or miss
+        score += pen_t2
+        has_missing = has_missing or miss_t2
 
         # --- T3: Water depth ---
         bwt_tokens = _split_tokens(
             df.at[i, col_BWT_flag] if col_BWT_flag in df.columns else None
         )
+        pen_t3, miss_t3 = 0.0, False
         if BWT_corrected_tok in bwt_tokens:
-            pass  # corrected for BWT -> penalty 0, no x
+            # corrected → 0.0, no miss
+            pass
         else:
             raw_elev = elev_s.at[i]
             if _is_nan(raw_elev):
                 water_depth = float("nan")
             else:
-                # Assume negative = depth, positive = elevation (land) → treat as shallow/unspecified
-                if raw_elev < 0:
-                    water_depth = abs(float(raw_elev))  # ocean depth
-                else:
-                    water_depth = 0.0  # positive elevation → treat as lt_1500_or_unspecified
+                water_depth = abs(float(raw_elev)) if raw_elev < 0 else 0.0
 
-            pen, miss = _eval_bins_largest_first(
+            pen_t3, miss_t3 = _eval_bins_largest_first(
                 t_blocks["water_depth"]["bins"],
                 water_depth,
             )
-            score += pen
-            has_missing = has_missing or miss
+            score += pen_t3
+            has_missing = has_missing or miss_t3
 
         # --- T4: Probe tilt ---
         tilt_flag_tokens = _split_tokens(
             df.at[i, col_tilt_flag] if col_tilt_flag in df.columns else None
         )
+        pen_t4, miss_t4 = 0.0, False
         if tilt_corrected_tok in tilt_flag_tokens:
-            pass  # tilt corrected -> penalty 0, no x
+            # corrected → 0.0, no miss
+            pass
         else:
-            pen, miss = _eval_bins_largest_first(
+            pen_t4, miss_t4 = _eval_bins_largest_first(
                 t_blocks["probe_tilt"]["bins"],
                 tilt_s.at[i],
             )
-            score += pen
-            has_missing = has_missing or miss
+            score += pen_t4
+            has_missing = has_missing or miss_t4
+
+        # --- Debug print for temperature (same rows as conductivity) ---
+        if 3160 <= i <= 3169:
+            print(f"\n=== Row {i} — Temperature penalties ===")
+            print(f"  Penetration depth (T1):  {pen_t1:+.1f}  (miss: {miss_t1})")
+            print(f"  Number T points (T2):    {pen_t2:+.1f}  (miss: {miss_t2})")
+            print(f"  Water depth (T3):        {pen_t3:+.1f}  (miss: {miss_t3})")
+            print(f"  Probe tilt (T4):         {pen_t4:+.1f}  (miss: {miss_t4})")
+            print(f"  Final T-score:           {score:.3f}")
+            print(f"  Has missing (T):         {has_missing}")
 
         return score, has_missing
-
     # ------------------------------------------------------------------
     def apply_conductivity(i) -> tuple[float, bool]:
         score       = float(tc_logic.get("start_value", 1.0))
@@ -346,41 +323,58 @@ def calculate_m_score_marine(
             "C45": _tok(col_tc_pt),
         }
 
-        # --- TC1: location ---
-        pen, miss = _worst_matched_penalty(row_tokens["C42"], _loc_map)
-        score += pen
-        has_missing = has_missing or miss
+        # --- Debug: print saturation tokens for rows 2830–2837 ---
+        if 2830 <= i <= 2837:
+            print(f"\n=== Row {i} — Saturation tokens ===")
+            print(f"  C44 (saturation): {row_tokens['C44']}")
+            print(f"  C43 (method):     {row_tokens['C43']}")
+            print(f"  C41 (source):     {row_tokens['C41']}")
 
-        # --- TC2: source type + saturation ---
-        pen, miss = _eval_cases(
+        # --- TC1: location ---
+        pen_loc, miss_loc = _worst_matched_penalty(row_tokens["C42"], _loc_map)
+        score += pen_loc
+        has_missing = has_missing or miss_loc
+
+        # --- TC2: saturation ---
+        pen_sat, miss_sat = _eval_cases(
             tc_blocks["saturation"]["cases"],
             row_tokens,
         )
-        score += pen
-        has_missing = has_missing or miss
+        score += pen_sat
+        has_missing = has_missing or miss_sat
 
         # --- TC3: number of conductivities ---
         num_block = tc_blocks["number_of_conductivities"]
         ao = num_block.get("apply_only_if", {}).get("C42_tc_location")
+        do_apply = True
         if ao:
-            rhs      = _norm(ao.get("value", ""))
-            op       = ao.get("op", "!=")
+            rhs = ao.get("value", "").strip().lower()
+            op = ao.get("op", "!=")
             do_apply = (rhs not in row_tokens["C42"]) if op == "!=" else (rhs in row_tokens["C42"])
-        else:
-            do_apply = True
 
+        pen_num, miss_num = 0.0, False
         if do_apply:
-            pen, miss = _eval_bins_largest_first(num_block["bins"], tc_n_s.at[i])
-            score += pen
-            has_missing = has_missing or miss
+            pen_num, miss_num = _eval_bins_largest_first(num_block["bins"], tc_n_s.at[i])
+            score += pen_num
+            has_missing = has_missing or miss_num
 
         # --- TC4: pT conditions ---
-        pen, miss = _eval_cases(
+        pen_pt, miss_pt = _eval_cases(
             tc_blocks["pT_conditions"]["cases"],
             row_tokens,
         )
-        score += pen
-        has_missing = has_missing or miss
+        score += pen_pt
+        has_missing = has_missing or miss_pt
+
+        # --- Debug print for specific rows ---
+        if 3160 <= i <= 3169:
+            print(f"\n=== Row {i} — Conductivity penalties ===")
+            print(f"  Location (C42):       {pen_loc:+.1f}  (miss: {miss_loc})")
+            print(f"  Saturation (TC2):     {pen_sat:+.1f}  (miss: {miss_sat})")
+            print(f"  Number cond. (TC3):   {pen_num:+.1f}  (miss: {miss_num})")
+            print(f"  pT conditions (TC4):  {pen_pt:+.1f}  (miss: {miss_pt})")
+            print(f"  Final TC-score:       {score:.3f}")
+            print(f"  Has missing (TC):     {has_missing}")
 
         return score, has_missing
 
@@ -403,6 +397,7 @@ def calculate_m_score_marine(
             raw  = float(t_score) * float(tc_score)
             raw_list.append(raw)
 
+        raw = float(t_score) * float(tc_score)
         base = classify(raw)
         out.append(f"{base}{missing_suffix}" if (t_miss or tc_miss) else base)
 
@@ -417,7 +412,6 @@ def calculate_m_score_marine(
         return out_series, debug_dict
     else:
         return out_series
-
 
 
 

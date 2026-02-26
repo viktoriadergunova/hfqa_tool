@@ -122,6 +122,7 @@ columns:
       - "[Mining]"
       - "[Tunneling]"
       - "[Probing (onshore-lake-river-etc.)]"
+      - "[Probing (onshore/lake, river, etc.)]" # in old versions
       - "[Probing (offshore-ocean)]"
       - "[Drilling-Clustering]"
       - "[Probing-Clustering]"
