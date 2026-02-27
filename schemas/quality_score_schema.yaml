@@ -76,7 +76,7 @@ m_score:
           when:
             C37_T_number:
               op: ">"
-              value: 15
+              value: 3
           rules:
             equilibrium_or_corrected:
               methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]"]
@@ -89,13 +89,13 @@ m_score:
           when: {}
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]", "[cBHT]", "[cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"] 
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]","[HF-FTeq]", "[cBHT]", "[cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cEGRT]", "[GRT]"] 
               penalty: -0.1
             perturbed:
-              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DTS]", "[RTDpert]", "[BLK]","[HT-FT]"]
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DTS]", "[HF-FTpert]", "[RTDpert]", "[BLK]"]
               penalty: -0.3
             estimated:
-              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]", "[unspecified]", "[other (specify in comments)]"]
               penalty: -0.5
 
         one_single_point_plus_surface_T:
@@ -115,7 +115,7 @@ m_score:
               penalty: -0.6
 
       missing_metadata:
-        required_C_fields: ["C31", "C32", "C37"]
+        required_C_fields: ["C31", "C32"]
         rule: "apply_max_penalty_for_unresolvable_case_and_flag_x"
 
     conductivity:
@@ -272,7 +272,7 @@ m_score:
             # --- Offshore on-board (ship) measurement ---
             - label: "ship_insitu"
               when:
-                C44: "[Saturated measured insitu]"
+                C44: "[Saturated measured in-situ]"
                 C43: "[Probe - pulse technique]"
                 C41: "[In-situ probe]"
               penalty: 0.1

@@ -172,6 +172,7 @@ def _eval_cases(
                     match = False
                     break
         if match:
+            
             return float(case["penalty"]), False
 
     # Present but no case matched → worst penalty, no x
@@ -232,10 +233,16 @@ def calculate_m_score_marine(
     def classify(raw: float) -> str:
         if _is_nan(raw):
             return "M4"
-        if raw >= float(thr["M1"]): return "M1"
-        if raw >= float(thr["M2"]): return "M2"
-        if raw >= float(thr["M3"]): return "M3"
+        
+        # Round to avoid floating-point issues
+        raw_rounded = round(float(raw), 3)
+        
+        if raw_rounded >= float(thr["M1"]): return "M1"
+        if raw_rounded >= float(thr["M2"]): return "M2"
+        if raw_rounded >= float(thr["M3"]): return "M3"
         return "M4"
+
+
 
     # ------------------------------------------------------------------
     def apply_temperature(i) -> tuple[float, bool]:
@@ -297,7 +304,7 @@ def calculate_m_score_marine(
             has_missing = has_missing or miss_t4
 
         # --- Debug print for temperature (same rows as conductivity) ---
-        if 3160 <= i <= 3169:
+        if 4950 <= i <= 4959:
             print(f"\n=== Row {i} — Temperature penalties ===")
             print(f"  Penetration depth (T1):  {pen_t1:+.1f}  (miss: {miss_t1})")
             print(f"  Number T points (T2):    {pen_t2:+.1f}  (miss: {miss_t2})")
@@ -324,7 +331,7 @@ def calculate_m_score_marine(
         }
 
         # --- Debug: print saturation tokens for rows 2830–2837 ---
-        if 2830 <= i <= 2837:
+        if 4950 <= i <= 4959:
             print(f"\n=== Row {i} — Saturation tokens ===")
             print(f"  C44 (saturation): {row_tokens['C44']}")
             print(f"  C43 (method):     {row_tokens['C43']}")
@@ -367,7 +374,7 @@ def calculate_m_score_marine(
         has_missing = has_missing or miss_pt
 
         # --- Debug print for specific rows ---
-        if 3160 <= i <= 3169:
+        if 4950 <= i <= 4959:
             print(f"\n=== Row {i} — Conductivity penalties ===")
             print(f"  Location (C42):       {pen_loc:+.1f}  (miss: {miss_loc})")
             print(f"  Saturation (TC2):     {pen_sat:+.1f}  (miss: {miss_sat})")
