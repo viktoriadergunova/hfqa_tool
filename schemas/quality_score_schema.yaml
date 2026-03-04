@@ -44,6 +44,7 @@ m_score:
     tc_number_col: "C47"
     tc_saturation_col: "C44"
     tc_pT_conditions_col: "C45"
+    corr_IS_flag_col: "C11"
 
     # =================================================
     # Marine / probe-sensing (Table 2)
@@ -51,7 +52,7 @@ m_score:
     probe_penetration_col: "C6"     # penetration depth (m)
     probe_tilt_col: "C23"           # tilt (deg)
     elevation_col: "P6"             # elevation (m); use abs(P6) as water depth mbsl offshore
-    corr_IS_flag_col: "C12"         # includes [Tilt corrected]
+    corr_T_flag_col: "C12"         # includes [Tilt corrected]
     corr_BWT_flag_col: "C17"        # use as “corrected for BWT” indicator
 
     # marine TC uses same fields plus tc_method
@@ -89,10 +90,10 @@ m_score:
           when: {}
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[DTSeq]", "[cDTS]","[HF-FTeq]", "[cBHT]", "[cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cEGRT]", "[GRT]"] 
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[cBHT]", "[HFT-FTeq]", " [cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cHT-FT]", "[EGRT]", "[GRT]","[cDST]", "[cDTS]"]
               penalty: -0.1
             perturbed:
-              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[DTS]", "[HF-FTpert]", "[RTDpert]", "[BLK]"]
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[HFT-FTpert]", "[RTDpert]", "[BLK]", "[DST]", "[DTS]"]
               penalty: -0.3
             estimated:
               methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]", "[unspecified]", "[other (specify in comments)]"]
@@ -105,13 +106,13 @@ m_score:
               value: "[SUR]"
           rules:
             equilibrium_or_corrected:
-              C32_methods_any_of: ["[cBHT]", "[cDTS]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]"]
+              C32_methods_any_of: ["[cBHT]",  "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cHT-FT]", "[EGRT]", "[GRT]", "[cDST]"]
               penalty: -0.3
             perturbed:
-              C32_methods_any_of: ["[BHT]", "[DTS]", "[RTDpert]"]
+              C32_methods_any_of: ["[BHT]", "[HF-FTpert]", "[RTDpert]", "[DST]"]
               penalty: -0.5
             estimated:
-              C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]"]
+              C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]", "[unspecified]", "[other (specify in comments)]"]
               penalty: -0.6
 
       missing_metadata:
@@ -121,7 +122,7 @@ m_score:
     conductivity:
       start_value: 1.0
 
-      gate_interval_depth_reported:
+      gate_interval_depth_reported:   # OR
         required_C_fields: ["C4", "C5"]
         if_missing:
           tc_score_fixed: 0.1
@@ -137,15 +138,55 @@ m_score:
 
         source_type:
           C_field: "C41"
-          mapping:
-            "[In-situ probe]": 0.1
-            "[Core-log integration]": 0.1
-            "[Core samples]": 0.0
-            "[Cutting samples]": -0.1
-            "[Outcrop samples]": -0.1
-            "[Well-log interpretation]": -0.1
-            "[Mineral computation]": -0.2
-            "[Assumed from literature]": -0.2
+          cases:
+            - label: "in_situ_probe"
+              when:
+                C41: "[In-situ probe]"
+              penalty: 0.1
+
+            - label: "core_log_integration"
+              when:
+                C41: "[Core-log integration]"
+              penalty: 0.1
+
+            - label: "core_samples"
+              when:
+                C41_any:
+                  - "[Core samples]"
+                  - "[Core sample]"
+              penalty: 0.0
+
+            - label: "cutting_samples"
+              when:
+                C41_any:
+                  - "[Cutting samples]"
+                  - "[Cutting sample]"
+              penalty: -0.1
+
+            - label: "outcrop_samples"
+              when:
+                C41_any:
+                  - "[Outcrop samples]"
+                  - "[Outcrop sample]"
+              penalty: -0.1
+
+            - label: "well_log_interpretation"
+              when:
+                C41: "[Well-log interpretation]"
+              penalty: -0.1
+
+            - label: "mineral_computation"
+              when:
+                C41: "[Mineral computation]"
+              penalty: -0.2
+
+            - label: "assumed_or_unspecified"
+              when:
+                C41_any:
+                  - "[Assumed from literature]"
+                  - "[unspecified]"
+                  - "[other (specify in comments)]"
+              penalty: -0.2
 
         number_of_conductivities:
           C_field: "C47"
@@ -153,43 +194,94 @@ m_score:
             C42_tc_location:
               op: "!="
               value: "[Literature/unspecified]"
-          mapping:
-            ">15": 0.0
-            "1-15": -0.1
-            "unspecified_or_missing": -0.1
+          bins:
+            gt_15:
+              when:
+                op: ">"
+                value: 15.0
+              penalty: 0.0
+            le_15:
+              when:
+                op: "<="
+                value: 15.0
+              penalty: -0.1
 
         saturation:
           C_field: "C44"
-          mapping:
-            "[Saturated measured]": 0.0
-            "[Saturated measured in-situ]": 0.0
-            "[Saturated calculated]": -0.1
-            "[Recovered]": -0.1
-            "[Dry measured]": -0.2
+          cases:
+            - label: "saturated_measured"
+              when:
+                C44_any:
+                  - "[Saturated measured]"
+                  - "[Saturated measured in-situ]"  
+              penalty: 0.0
+
+            - label: "calculated_or_recovered"
+              when:
+                C44_any:
+                  - "[Saturated calculated]"
+                  - "[Recovered]"
+              penalty: -0.1
+
+            - label: "dry_measured_or_unspecified"
+              when:
+                C44_any:
+                  - "[Dry measured]"
+                  - "[unspecified]"
+                  - "[other (specify in comments)]"
+              penalty: -0.2
 
         pT_conditions:
-          C_field: "C45"
-          mapping:
-            "[Actual in-situ (pT) conditions]": 0.0
-            "[Replicated in-situ (pT)]": 0.0
-            "[Corrected in-situ (pT)]": 0.0
-            "[Replicated in-situ (p)]": -0.1
-            "[Corrected in-situ (p)]": -0.1
-            "[Replicated in-situ (T)]": -0.1
-            "[Corrected in-situ (T)]": -0.1
-            "[Recorded ambient pT conditions]": -0.2
-            "[Unrecorded ambient pT conditions]": -0.2
-            "[unspecified]": -0.2
+          C_field: "C45" 
+          cases:
+            # In-situ pT (full considered pT)
+            - label: "insitu_pT_full"
+              when:
+                C45_any:
+                  - "[Actual in-situ (pT) conditions]"
+                  - "[Replicated in-situ (pT)]"
+                  - "[Corrected in-situ (pT)]"
+                C11: "[Considered - pT]"   # exact match required on corr_IS_flag
+              penalty: 0.0
+
+            # Replicated/corrected only p OR only T
+            - label: "replicated_corrected_p_or_t"
+              when:
+                C45_any:
+                  - "[Replicated in-situ (p)]"
+                  - "[Corrected in-situ (p)]"
+                  - "[Replicated in-situ (T)]"
+                  - "[Corrected in-situ (T)]"
+                C11_any:
+                  - "[Considered - p]"
+                  - "[Considered - T]"
+              penalty: -0.1
+
+            # Ambient / unspecified / not considered
+            - label: "ambient_or_not_considered"
+              when:
+                C45_any:
+                  - "[Recorded ambient pT conditions]"
+                  - "[Unrecorded ambient pT conditions]"
+                  - "[Unspecified]"
+                C11_any:
+                  - "[not considered]"
+                  - "[unspecified]"
+              penalty: -0.2
+
+            - label: "unrecognized_pT"
+              when: {}   # always true if reached
+              penalty: -0.2
 
             
 
       missing_metadata:
         required_C_fields_after_gate:
           - "C42"
+          - "C41"
           - "C47"
           - "C44"
           - "C45"
-          - "C43"
         rule: "apply_max_penalty_per_missing_block_and_flag_x"
 
   # =====================================================
@@ -324,7 +416,10 @@ m_score:
             # --- Estimation ---
             - label: "estimation_lithology"
               when:
-                C43: "[Estimation - from lithology and literature]"
+                C43_any: 
+                  - "[Estimation - from lithology and literature]"
+                  - "[Well-log - deterministic approach]"
+                  - "[Well-log - empirical equation]"
                 C42: "[Literature/unspecified]"
               penalty: -0.1
 

@@ -124,7 +124,7 @@ def normalize_schema(schema: dict) -> dict:
                 if key in cond:
                     _normalize_when_block(cond[key])
 
-    # Normalize top-level conditional_rules (rules-file format)
+    # Normalize top-level conditional_rules (rules-file format) — unchanged
     rules = schema.get("conditional_rules")
     if isinstance(rules, list):
         for rule in rules:
@@ -185,36 +185,20 @@ def normalize_schema(schema: dict) -> dict:
     # Normalize m_score / quality_score blocks
     m_score = schema.get("m_score")
     if isinstance(m_score, dict):
-        # Borehole logic
+        # Borehole logic 
         bh_logic = m_score.get("borehole_logic")
         if isinstance(bh_logic, dict):
-            for section in ("temperature", "conductivity"):
-                sec = bh_logic.get(section)
-                if not isinstance(sec, dict):
-                    continue
-
-                cases = sec.get("cases")
-                if isinstance(cases, dict):
-                    for _, case in cases.items():
-                        if not isinstance(case, dict):
-                            continue
-                        when = case.get("when")
-                        if isinstance(when, dict):
-                            _normalize_when_block(when)
-                        rules = case.get("rules")
-                        if isinstance(rules, dict):
-                            for _, rule in rules.items():
-                                if not isinstance(rule, dict):
-                                    continue
-                                for key in ("methods_any_of", "C32_methods_any_of"):
-                                    if isinstance(rule.get(key), list):
-                                        rule[key] = normalize_token_list(rule[key])
-                                for k, v in rule.items():
-                                    if isinstance(v, str):
-                                        rule[k] = normalize_token(v)
-
-                blocks = sec.get("blocks")
+            conductivity = bh_logic.get("conductivity")
+            if isinstance(conductivity, dict):
+                blocks = conductivity.get("blocks")
                 if isinstance(blocks, dict):
+                    # Normalize inside cases for source_type, saturation, pT_conditions
+                    for block_name in ("source_type", "saturation", "pT_conditions"):
+                        blk = blocks.get(block_name)
+                        if isinstance(blk, dict) and "cases" in blk:
+                            _normalize_cases(blk["cases"])
+
+                    # Other conductivity blocks (bins, mapping, etc.) — unchanged
                     for _, block in blocks.items():
                         if not isinstance(block, dict):
                             continue
@@ -228,6 +212,27 @@ def normalize_schema(schema: dict) -> dict:
                             _normalize_bins(block["bins"])
                         if block.get("corrected_if"):
                             _normalize_corrected_if(block["corrected_if"])
+
+        # Temperature cases (unchanged — your original code already handles rules)
+        temperature = bh_logic.get("temperature")
+        if isinstance(temperature, dict):
+            cases = temperature.get("cases")
+            if isinstance(cases, dict):
+                for _, case in cases.items():
+                    if isinstance(case, dict):
+                        when = case.get("when")
+                        if isinstance(when, dict):
+                            _normalize_when_block(when)
+                        rules = case.get("rules")
+                        if isinstance(rules, dict):
+                            for _, rule in rules.items():
+                                if isinstance(rule, dict):
+                                    for key in ("methods_any_of", "C32_methods_any_of"):
+                                        if isinstance(rule.get(key), list):
+                                            rule[key] = normalize_token_list(rule[key])
+                                    for k, v in rule.items():
+                                        if isinstance(v, str):
+                                            rule[k] = normalize_token(v)
 
         # Marine logic
         marine_logic = m_score.get("marine_logic")

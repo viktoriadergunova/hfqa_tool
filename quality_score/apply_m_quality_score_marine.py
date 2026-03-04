@@ -202,7 +202,7 @@ def calculate_m_score_marine(
     col_elev      = calc["elevation_col"]            # P6
     col_BWT_flag  = calc["corr_BWT_flag_col"]        # C17
     col_tilt      = calc["probe_tilt_col"]           # C23
-    col_tilt_flag = calc["corr_IS_flag_col"]         # C12
+    col_tilt_flag = calc["corr_T_flag_col"]         # C12
     col_tc_loc    = calc["tc_location_col"]          # C42
     col_tc_src    = calc["tc_source_col"]            # C41
     col_tc_method = calc["tc_method_col"]            # C43

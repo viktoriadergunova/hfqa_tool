@@ -31,6 +31,8 @@ def normalize_bracketed_token_series(s: pd.Series) -> pd.Series:
             if p.startswith("[") and p.endswith("]"):
                 p = p[1:-1].strip()
 
+            p = p.replace("\u2013", "-").replace("\u2014", "-")
+
             # Normalize internal separators
             p = re.sub(r"[ ,/]+", "-", p)
             p = re.sub(r"-{2,}", "-", p)

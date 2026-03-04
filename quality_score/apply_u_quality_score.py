@@ -21,8 +21,9 @@ def calculate_u_score(df: pd.DataFrame, qc_schema: dict) -> pd.Series:
     unc_num = pd.to_numeric(df[uncertainty_col], errors="coerce")
 
     cov = np.full(len(df), np.nan, dtype=float)
-    mask_valid = (val_num.abs() > 0) & unc_num.notna() & val_num.notna()
-    cov[mask_valid] = (unc_num[mask_valid] / val_num.abs()[mask_valid]) * 100.0
+    mask_valid = (val_num.abs() > 0) & val_num.notna() & unc_num.notna() & (unc_num != 0)
+    cov[mask_valid] = (unc_num[mask_valid].abs() / val_num.abs()[mask_valid]) * 100.0
+    cov = np.round(cov, 6)
 
 
     conditions = [
