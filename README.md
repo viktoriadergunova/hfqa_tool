@@ -2,6 +2,7 @@
 `hfqa_tool` is a Python package for validating heat-flow data against the IHFC Global Heat Flow Database (GHFDB) schema and assessing data quality according to International Heat Flow Commission standards, including quality scoring based on the methodology described in doi:10.1016/j.tecto.2023.229976.
 
 ## Table of contents 
+- [Version] (#history)
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -12,6 +13,14 @@
 - [Citation](#citation)
 - [License](#license)
 
+## Version History 
+
+| Version | Branch / Repository | Status |
+|---------|-------------------|--------|
+| v0.2.0 *(current)* | [`main`](https://github.com/ihfc-iugg/hfqa_tool) | Active |
+| v0.1.0 | [`v0.1.0-legacy`](https://github.com/ihfc-iugg/hfqa_tool/tree/v0.1.0-legacy) | Deprecated — please use `main` |
+
+> **Note:** As of v0.2.0, the `main` branch of [ihfc-iugg/hfqa_tool](https://github.com/ihfc-iugg/hfqa_tool) reflects the current active version. The previous codebase has been preserved under the `v0.1.0-legacy` branch for reference but is no longer maintained.
 
 ## Overview
 
@@ -278,6 +287,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
