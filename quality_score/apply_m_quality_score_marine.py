@@ -126,20 +126,11 @@ def _eval_cases(
     cases: list[dict],
     row_tokens: dict[str, set[str]],
 ) -> tuple[float, bool]:
-    """
-    Evaluates a list of cases with multi-field when conditions.
-
-    Schema syntax:
-      - C44: "[value]"            -> exact match required (AND across fields)
-      - C44_any: ["[v1]","[v2]"] -> any of the values must be present (OR within field)
-
-    Returns (penalty, missing_flag):
-      - Case matched:                          (penalty, False)
-      - Missing required field(s) or no case matched: (worst_penalty, True)  ← x flag + largest penalty
-    """
     required_fields = set()
     for case in cases:
-        required_fields.update(case.get("when", {}).keys())
+        when = case.get("when", {})
+        if when:
+            required_fields.update(when.keys())
 
     missing_required = any(
         not row_tokens.get(field.replace("_any", ""), set())
@@ -152,35 +143,40 @@ def _eval_cases(
         worst = min(float(case["penalty"]) for case in cases)
         return worst, True
 
-    # Try to match cases
+    matched_penalties = []
     for case in cases:
         when = case.get("when", {})
+        if not when:
+            continue
         match = True
         for field, condition in when.items():
             if field.endswith("_any"):
                 col = field[:-4]
                 tokens = row_tokens.get(col, set())
-                values = set(condition)  # upstream already normalized
+                values = set(condition)
                 if not tokens & values:
                     match = False
                     break
             else:
                 col = field
                 tokens = row_tokens.get(col, set())
-                val = condition  # upstream already normalized
+                val = condition
                 if val not in tokens:
                     match = False
                     break
         if match:
-            
+            matched_penalties.append(float(case["penalty"]))
+
+    if matched_penalties:
+        return min(matched_penalties), False
+
+    # No match → check fallback (empty when: {})
+    for case in cases:
+        if not case.get("when", {}):
             return float(case["penalty"]), False
 
-    # Present but no case matched → worst penalty, no x
-    if not cases:
-        return 0.0, False
     worst = min(float(case["penalty"]) for case in cases)
     return worst, False
-
 
 # ---------------------------------------------------------------------------
 # Main scorer
@@ -277,8 +273,10 @@ def calculate_m_score_marine(
             raw_elev = elev_s.at[i]
             if _is_nan(raw_elev):
                 water_depth = float("nan")
+            elif raw_elev >= 0:
+                water_depth = float("nan")  # positive elevation → treat as missing
             else:
-                water_depth = abs(float(raw_elev)) if raw_elev < 0 else 0.0
+                water_depth = abs(float(raw_elev))
 
             pen_t3, miss_t3 = _eval_bins_largest_first(
                 t_blocks["water_depth"]["bins"],

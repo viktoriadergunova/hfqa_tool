@@ -90,10 +90,10 @@ m_score:
           when: {}
           rules:
             equilibrium_or_corrected:
-              methods_any_of: ["[LOGeq]", "[cLOG]", "[cBHT]", "[HFT-FTeq]", " [cHT-FT]", "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cHT-FT]", "[EGRT]", "[GRT]","[cDST]", "[cDTS]"]
+              methods_any_of: ["[LOGeq]", "[cLOG]", "[cBHT]", "[HFT-FTeq]", " [cHT-FT]",  "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cHT-FT]", "[EGRT]", "[GRT]","[cDST]", "[cDTS]"]
               penalty: -0.1
             perturbed:
-              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[HFT-FTpert]", "[RTDpert]", "[BLK]", "[DST]", "[DTS]"]
+              methods_any_of: ["[LOGpert]", "[DTSpert]", "[BHT]", "[HFT-FTpert]", "[RTDpert]", "[BLK]", "[DST]", "[DTS]", "[RTD]"]
               penalty: -0.3
             estimated:
               methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]", "[unspecified]", "[other (specify in comments)]"]
@@ -109,7 +109,7 @@ m_score:
               C32_methods_any_of: ["[cBHT]",  "[RTDeq]", "[cRTD]", "[ODTT-PC]", "[ODTT-TP]", "[cHT-FT]", "[EGRT]", "[GRT]", "[cDST]"]
               penalty: -0.3
             perturbed:
-              C32_methods_any_of: ["[BHT]", "[HF-FTpert]", "[RTDpert]", "[DST]"]
+              C32_methods_any_of: ["[BHT]", "[HF-FTpert]", "[RTDpert]", "[DST]", "[RTD]"]
               penalty: -0.5
             estimated:
               C32_methods_any_of: ["[CPD]", "[XEN]", "[GTM]", "[BSR]", "[unspecified]", "[other (specify in comments)]"]

@@ -254,10 +254,10 @@ def calculate_m_score_borehole(
     # Canonical tokens
     sur_tok = "[sur]"
 
-
     def classify(raw: float) -> str:
         if _is_nan(raw):
             return "M4"
+        raw = round(float(raw), 3)
         if raw >= float(thr["M1"]):
             return "M1"
         if raw >= float(thr["M2"]):
@@ -337,7 +337,9 @@ def calculate_m_score_borehole(
             cont_methods |= {str(x).strip().lower() for x in rule.get("methods_any_of", [])}
 
         has_cont_method = bool((top | bot) & cont_methods)
-        is_cont = c37_ok and has_cont_method
+        non_cont_tokens = (top | bot) - cont_methods
+        has_non_cont = bool(non_cont_tokens)
+        is_cont = c37_ok and has_cont_method and not has_non_cont
 
         if is_cont:
             pen, miss = _worst_rule_penalty(top, bot, cont_rules)

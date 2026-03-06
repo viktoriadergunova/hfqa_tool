@@ -886,8 +886,10 @@ columns:
       - "[cDTS]"
       - "[BHT]"
       - "[cBHT]"
-      - "[HT-FT]"
+      - "[HT-FTpert]"
+      - "[HT-FTeq]"
       - "[cHT-FT]"
+      - "[RTD]"
       - "[RTDeq]"
       - "[RTDpert]"
       - "[cRTD]"
@@ -923,9 +925,11 @@ columns:
       - "[cDTS]"
       - "[BHT]"
       - "[cBHT]"
-      - "[HT-FT]"
+      - "[HT-FTpert]"
+      - "[HT-FTeq]"
       - "[cHT-FT]"
       - "[RTDeq]"
+      - "[RTD]"
       - "[RTDpert]"
       - "[cRTD]"
       - "[CPD]"
@@ -1182,6 +1186,29 @@ columns:
     obligation: "O"
     comment: "IGSN (International Geo Sample Number)"
 
+  C50:
+    dtype: float64
+    range: [-99999.99, 99999.99]
+    obligation: "R"
+    comment: "Temperature top (T_top_mean) [°C]"
+
+  C51:
+    dtype: float64
+    range: [-99999.99, 99999.99]
+    obligation: "R"
+    comment: "Temperature top uncertainty (T_top_uncertainty) [°C]"
+
+  C52:
+    dtype: float64
+    range: [-99999.99, 99999.99]
+    obligation: "R"
+    comment: "Temperature bottom (T_bot_mean) [°C]"
+
+  C53:
+    dtype: float64
+    range: [-99999.99, 99999.99]
+    obligation: "R"
+    comment: "Temperature bottom uncertainty (T_bot_uncertainty) [°C]"
 
   # ===== ADMIN LEVEL (Axx) =====
   A1:  
