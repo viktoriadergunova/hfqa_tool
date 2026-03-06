@@ -1,8 +1,8 @@
 # Heat Flow Quality Analysis Tool (hfqa_tool)
-`hfqa_tool` is a Python package for validating heat-flow data against the IHFC Global Heat Flow Database (GHFDB) schema and assessing data quality according to International Heat Flow Commission standards, including quality scoring based on the methodology described in doi:10.1016/j.tecto.2023.229976.
+`hfqa_tool` is a Python package for validating heat-flow data against the IHFC Global Heat Flow Database (GHFDB) schema and assessing data quality according to International Heat Flow Commission standards, including quality scoring based on the methodology described in [doi:10.1016/j.tecto.2023.229976](https://doi.org/10.1016/j.tecto.2023.229976)
 
 ## Table of contents 
-- [Version] (#history)
+- [Version History](#version-history)
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
@@ -287,6 +287,7 @@ This project is dual-licensed:
 ---
 
 **Maintained by the Section Geoenergy, GFZ Helmholtz Centre for Geosciences**
+
 
 
 
