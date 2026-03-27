@@ -1,6 +1,5 @@
 import pandas as pd
 
-import pandas as pd
 from pandas.api.types import (
     is_integer_dtype,
     is_float_dtype,
@@ -55,7 +54,8 @@ def apply_schema_types(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
             data_rows[col_name] = data_rows[col_name].astype("string[pyarrow]")
 
     # Combine back with meta rows and preserve order
-    df_combined = pd.concat([meta_rows, data_rows]).sort_index()
+    parts = [part for part in [meta_rows, data_rows] if not part.empty]
+    df_combined = pd.concat(parts).sort_index() if parts else df.iloc[0:0].copy()
     return df_combined
 
 
