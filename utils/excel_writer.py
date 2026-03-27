@@ -101,7 +101,7 @@ def generate_vocab_check_comments(
         comments.append(" | ".join(row_comments) if row_comments else "OK")
 
     # ---- write comments into RAW df (after meta rows) ----
-    df_out.iloc[:meta_rows, df_out.columns.get_loc(out_col)] = "META ROW"
+    #df_out.iloc[:meta_rows, df_out.columns.get_loc(out_col)] = "META ROW"
     df_out.iloc[meta_rows:, df_out.columns.get_loc(out_col)] = comments
 
     return df_out

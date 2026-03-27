@@ -14,8 +14,7 @@ from quality_score.apply_u_quality_score import calculate_u_score
 from quality_score.combine_scores import combine_u_m_p_scores
 from quality_score.apply_m_quality_score import calculate_m_score,  calculate_m_route_debug
 from quality_score.apply_p_flags import calculate_p_flags
-
-
+import numpy as np
 
 
 from utils.logging_utils import setup_logging
@@ -147,8 +146,8 @@ def run_pipeline(
             )
 
             write_excel_with_vocab_check_comments(
-                df_meta=None,
-                df_with_comments=df_for_excel,
+                df_meta=df_meta,
+                df_with_comments=df_for_excel.iloc[meta_rows:],
                 output_path=out_path,
             )
 
@@ -257,20 +256,16 @@ def run_pipeline(
 
             for col in debug_float_cols:
                 if col in df_data_typed.columns:
-                    # Direct assignment: align index and copy values (preserves NaN)
-                    df_for_excel[col] = df_data_typed[col].reindex(df_for_excel.index).values
-
-                    # Optional: round to 3 decimals for readability in Excel
+                    data_row_indices = df_for_excel.index[meta_rows:]
+                    df_for_excel.loc[data_row_indices, col] = df_data_typed[col].values
                     df_for_excel[col] = df_for_excel[col].round(3)
-
                 else:
-                    # If column somehow missing → fill with NaN
-                    df_for_excel[col] = np.nan
-
+                    df_for_excel[col] = pd.NA
+  
             # Write the Excel file with all columns
             write_excel_with_quality_score(
                 df_meta=df_meta,
-                df_with_quality=df_for_excel,
+                df_with_quality=df_for_excel.iloc[meta_rows:],
                 output_path=out_path,
             )
     
