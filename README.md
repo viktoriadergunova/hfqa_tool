@@ -208,6 +208,19 @@ The final quality score combines all three components:
 - `U2M3x.-------` - Good uncertainty, acceptable methodology with missing metadata, unspecified perturbations
 - `U3M2.SETPVXR` - Acceptable uncertainty, good methodology, multiple perturbations addressed
 
+If the input data contains `ID` and `ID_parent` columns, an additional `quality_score_inherited` column is added to the output, representing the worst quality score inherited from all relevant child entries (`C9 = [Yes]`) to the parent level, following the inheritance scheme described in Fuchs et al. (2023).
+
+**Example:**
+
+| ID_parent | ID | C9 | quality_score | quality_score_inherited |
+|-----------|----|----|---------------|------------------------|
+| 1 | 1 | `[Yes]` | `U1M2.xeTxxxx` | `U3M2.xeTxxxx` |
+| 1 | 2 | `[Yes]` | `U3M1.xeTxxxx` | `U3M2.xeTxxxx` |
+| 1 | 3 | `[Yes]` | `U2M2.xeTxxCx` | `U3M2.xeTxxxx` |
+| 1 | 4 | `[No]`  | `U4M4.xeTxVCx` | `U3M2.xeTxxxx` |
+
+The inherited score `U3M2.xeTxxxx` is derived as follows: worst U (`U3`) and worst M (`M2`) are taken independently across all relevant children (`C9 = [Yes]`); P-flags are taken from the child with the worst U score (`U3M1.xeTxxxx`), using M as tiebreaker. Child 4 is excluded as it is not marked as relevant (`C9 = [No]`).
+
 ### Output Files
 
 #### JSON Quality Report
