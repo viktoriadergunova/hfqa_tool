@@ -10,7 +10,7 @@ _M_ORDER = {"M1": 1, "M2": 2, "M3": 3, "M4": 4, "Mx": 9}
 
 # list form neede for inherited score
 _U_LIST = ["U1", "U2", "U3", "U4", "Ux"]
-_M_LIST = ["M1", "M2", "M3", "M4", "Mx"]
+_M_LIST = ["M1", "M2", "M3", "M4", "M1x", "M2x", "M3x", "M4x", "Mx"]
 
 # helpers
 def _norm_u(u: str | None) -> str:

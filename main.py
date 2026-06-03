@@ -263,6 +263,14 @@ def run_pipeline(
                     df_for_excel[col] = pd.NA
   
             # Write the Excel file with all columns
+            if "quality_score_inherited" in df_data_typed.columns:
+                df_for_excel = generate_quality_score_column(
+                    df_raw=df_for_excel,
+                    df_scored=df_data_typed,
+                    meta_rows=meta_rows,
+                    source_col="quality_score_inherited",
+                    out_col="quality_score_inherited",
+                )
             write_excel_with_quality_score(
                 df_meta=df_meta,
                 df_with_quality=df_for_excel.iloc[meta_rows:],
